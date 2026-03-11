@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - vehicle_data:/data
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=/data/vehicles.db
+      # Optional: set your DVLA API key here, or configure it in the app's
+      # Settings screen after first launch.
+      - DVLA_API_KEY=${DVLA_API_KEY:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  vehicle_data:
+    driver: local
