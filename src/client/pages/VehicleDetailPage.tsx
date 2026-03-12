@@ -5,6 +5,7 @@ import { api } from "../api.ts";
 import { DateBadge } from "../components/DateBadge.tsx";
 import { DatePickerModal } from "../components/DatePickerModal.tsx";
 import { RegistrationPlate } from "../components/RegistrationPlate.tsx";
+import { DrivingAnimation } from "../components/DrivingAnimation.tsx";
 import type { Vehicle } from "../types.ts";
 
 type DateField = "taxDueDate" | "motExpiryDate" | "insuranceExpiryDate" | "serviceDate";
@@ -128,7 +129,10 @@ export function VehicleDetailPage() {
   });
 
   const refreshMutation = useMutation({
-    mutationFn: () => api.vehicles.refresh(vehicleId),
+    mutationFn: () =>
+      Promise.all([api.vehicles.refresh(vehicleId), new Promise((r) => setTimeout(r, 2000))]).then(
+        ([result]) => result as Awaited<ReturnType<typeof api.vehicles.refresh>>
+      ),
     onSuccess: ({ vehicle: updated }) => {
       queryClient.setQueryData(["vehicles", vehicleId], updated);
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
@@ -336,6 +340,14 @@ export function VehicleDetailPage() {
             {refreshMutation.isPending ? "Refreshing..." : "Refresh from DVLA"}
           </button>
         </div>
+        {refreshMutation.isPending && (
+          <div className="mt-3 rounded-lg overflow-hidden">
+            <DrivingAnimation />
+            <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-1.5">
+              Fetching DVLA data…
+            </p>
+          </div>
+        )}
         {refreshMutation.error && (
           <p className="text-red-600 dark:text-red-400 text-xs mt-2">
             {(refreshMutation.error as Error).message}

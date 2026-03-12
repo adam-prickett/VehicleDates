@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../hooks/useTheme.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import { api } from "../api.ts";
+import { DrivingAnimation } from "./DrivingAnimation.tsx";
 
 export function Layout() {
   const location = useLocation();
@@ -17,7 +18,10 @@ export function Layout() {
   const [refreshResult, setRefreshResult] = useState<{ success: number; failed: number } | null>(null);
 
   const refreshAllMutation = useMutation({
-    mutationFn: api.vehicles.refreshAll,
+    mutationFn: () =>
+      Promise.all([api.vehicles.refreshAll(), new Promise((r) => setTimeout(r, 2000))]).then(
+        ([result]) => result as Awaited<ReturnType<typeof api.vehicles.refreshAll>>
+      ),
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       setRefreshResult(result);
@@ -132,16 +136,25 @@ export function Layout() {
         </div>
       </header>
 
-      {/* Refresh result toast */}
-      {refreshResult && (
-        <div className={`text-center text-sm font-medium py-2 px-4 ${refreshResult.failed > 0 ? "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"}`}>
+      {/* Refresh animation — full-screen overlay centered vertically */}
+      {refreshAllMutation.isPending && (
+        <div className="fixed inset-0 z-20 flex items-center pointer-events-none">
+          <div className="w-full shadow-2xl">
+            <DrivingAnimation />
+          </div>
+        </div>
+      )}
+
+      {/* Result toast — fixed below navbar */}
+      {!refreshAllMutation.isPending && refreshResult && (
+        <div className={`fixed top-[48px] left-0 right-0 z-10 text-center text-sm font-medium py-2 px-4 ${refreshResult.failed > 0 ? "bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" : "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"}`}>
           {refreshResult.failed > 0
             ? `DVLA refresh: ${refreshResult.success} updated, ${refreshResult.failed} failed`
             : `DVLA refresh complete — ${refreshResult.success} vehicle${refreshResult.success !== 1 ? "s" : ""} updated`}
         </div>
       )}
 
-      <main className={`flex-1 w-full px-4 py-6 mx-auto ${isListPage ? "max-w-full" : "max-w-2xl"}`}>
+      <main className={`flex-1 w-full px-4 py-6 mx-auto transition-[filter] duration-300 ${isListPage ? "max-w-full" : "max-w-2xl"} ${refreshAllMutation.isPending ? "blur-sm" : ""}`}>
         <Outlet />
       </main>
     </div>
