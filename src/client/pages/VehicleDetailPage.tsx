@@ -79,6 +79,11 @@ export function VehicleDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [editState, setEditState] = useState<EditState | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showArchiveForm, setShowArchiveForm] = useState(false);
+  const [archiveReason, setArchiveReason] = useState<"sold" | "scrapped" | "other">("sold");
+  const [archiveSaleDate, setArchiveSaleDate] = useState("");
+  const [archiveBuyerName, setArchiveBuyerName] = useState("");
+  const [archiveBuyerContact, setArchiveBuyerContact] = useState("");
   const [datePickerField, setDatePickerField] = useState<DateField | null>(null);
 
   const { data: vehicle, isLoading, error } = useQuery({
@@ -101,6 +106,24 @@ export function VehicleDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
       navigate("/vehicles");
+    },
+  });
+
+  const archiveMutation = useMutation({
+    mutationFn: (data: Parameters<typeof api.vehicles.archive>[1]) =>
+      api.vehicles.archive(vehicleId, data),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["vehicles", vehicleId], updated);
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      setShowArchiveForm(false);
+    },
+  });
+
+  const unarchiveMutation = useMutation({
+    mutationFn: () => api.vehicles.unarchive(vehicleId),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["vehicles", vehicleId], updated);
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },
   });
 
@@ -204,6 +227,41 @@ export function VehicleDetailPage() {
           {vehicle.manualSorn ? "Remove SORN" : "Mark SORN"}
         </button>
       </div>
+
+      {/* Archived Banner */}
+      {vehicle.archivedAt && (
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 tracking-wide uppercase">
+                  Archived
+                </span>
+                {vehicle.archiveReason && (
+                  <span className="text-sm text-gray-500 dark:text-gray-400 capitalize">{vehicle.archiveReason}</span>
+                )}
+              </div>
+              {vehicle.archiveReason === "sold" && (
+                <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
+                  {vehicle.saleDate && <p>Sold: {vehicle.saleDate}</p>}
+                  {vehicle.buyerName && <p>Buyer: {vehicle.buyerName}</p>}
+                  {vehicle.buyerContact && <p>Contact: {vehicle.buyerContact}</p>}
+                </div>
+              )}
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
+                Archived {formatDateTime(vehicle.archivedAt)}
+              </p>
+            </div>
+            <button
+              onClick={() => unarchiveMutation.mutate()}
+              disabled={unarchiveMutation.isPending}
+              className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {unarchiveMutation.isPending ? "Restoring..." : "Restore"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Dates Grid */}
       <div className="grid grid-cols-2 gap-3">
@@ -393,6 +451,72 @@ export function VehicleDetailPage() {
             <p className="text-gray-400 dark:text-gray-500 text-sm italic text-center py-2">
               No details recorded yet. Tap Edit to add details.
             </p>
+          )}
+        </div>
+      )}
+
+      {/* Archive */}
+      {!vehicle.archivedAt && (
+        <div>
+          {!showArchiveForm ? (
+            <button
+              onClick={() => setShowArchiveForm(true)}
+              className="w-full border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 font-medium py-2.5 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm cursor-pointer"
+            >
+              Archive Vehicle
+            </button>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 space-y-3">
+              <h3 className="font-semibold text-gray-700 dark:text-gray-200 text-sm">Archive Vehicle</h3>
+              <div>
+                <label className={labelCls}>Reason</label>
+                <select
+                  value={archiveReason}
+                  onChange={(e) => setArchiveReason(e.target.value as "sold" | "scrapped" | "other")}
+                  className={inputCls}
+                >
+                  <option value="sold">Sold</option>
+                  <option value="scrapped">Scrapped</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              {archiveReason === "sold" && (
+                <>
+                  <div>
+                    <label className={labelCls}>Sale Date</label>
+                    <input type="date" value={archiveSaleDate} onChange={(e) => setArchiveSaleDate(e.target.value)} className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Buyer Name</label>
+                    <input type="text" value={archiveBuyerName} onChange={(e) => setArchiveBuyerName(e.target.value)} placeholder="e.g. John Smith" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Buyer Contact</label>
+                    <input type="text" value={archiveBuyerContact} onChange={(e) => setArchiveBuyerContact(e.target.value)} placeholder="Phone, email or address" className={inputCls} />
+                  </div>
+                </>
+              )}
+              {archiveMutation.error && (
+                <p className="text-red-600 dark:text-red-400 text-sm">{(archiveMutation.error as Error).message}</p>
+              )}
+              <div className="flex gap-3">
+                <button onClick={() => setShowArchiveForm(false)} className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-semibold py-2 rounded-lg text-sm cursor-pointer">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => archiveMutation.mutate({
+                    reason: archiveReason,
+                    saleDate: archiveReason === "sold" ? (archiveSaleDate || null) : null,
+                    buyerName: archiveReason === "sold" ? (archiveBuyerName || null) : null,
+                    buyerContact: archiveReason === "sold" ? (archiveBuyerContact || null) : null,
+                  })}
+                  disabled={archiveMutation.isPending}
+                  className="flex-1 bg-gray-600 dark:bg-gray-500 text-white font-semibold py-2 rounded-lg text-sm hover:bg-gray-700 dark:hover:bg-gray-400 disabled:opacity-50 cursor-pointer"
+                >
+                  {archiveMutation.isPending ? "Archiving..." : "Archive Vehicle"}
+                </button>
+              </div>
+            </div>
           )}
         </div>
       )}

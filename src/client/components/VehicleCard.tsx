@@ -43,22 +43,28 @@ const statusBanner = {
 
 interface VehicleCardProps {
   vehicle: Vehicle;
+  archived?: boolean;
 }
 
-export function VehicleCard({ vehicle }: VehicleCardProps) {
+export function VehicleCard({ vehicle, archived }: VehicleCardProps) {
   const status = getOverallStatus(vehicle);
   const sorn = isSorn(vehicle);
 
   return (
     <Link to={`/vehicles/${vehicle.id}`} className="block group h-full cursor-pointer">
       <div
-        className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 h-full flex flex-col ${statusBanner[status]}`}
+        className={`rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 h-full flex flex-col ${archived ? "bg-gray-50 dark:bg-gray-900 opacity-75" : "bg-white dark:bg-gray-800"} ${statusBanner[archived ? "unknown" : status]}`}
       >
         <div className="flex items-start justify-between gap-2 mb-3 flex-1">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <RegistrationPlate registration={vehicle.registrationNumber} size="sm" />
-              {sorn && (
+              {archived && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 tracking-wide uppercase">
+                  {vehicle.archiveReason ?? "Archived"}
+                </span>
+              )}
+              {!archived && sorn && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-purple-700 border border-purple-200 tracking-wide">
                   SORN
                 </span>

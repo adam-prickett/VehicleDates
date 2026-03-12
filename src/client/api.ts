@@ -40,7 +40,8 @@ export const api = {
       ),
   },
   vehicles: {
-    list: () => request<Vehicle[]>("/vehicles"),
+    list: (archived?: boolean) =>
+      request<Vehicle[]>(archived ? "/vehicles?archived=true" : "/vehicles"),
     get: (id: number) => request<Vehicle>(`/vehicles/${id}`),
     create: (data: {
       registrationNumber: string;
@@ -76,6 +77,16 @@ export const api = {
       request<{ success: boolean }>(`/vehicles/${id}`, {
         method: "DELETE",
       }),
+    archive: (
+      id: number,
+      data: { reason: string; saleDate?: string | null; buyerName?: string | null; buyerContact?: string | null }
+    ) =>
+      request<Vehicle>(`/vehicles/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    unarchive: (id: number) =>
+      request<Vehicle>(`/vehicles/${id}/unarchive`, { method: "POST" }),
     refresh: (id: number) =>
       request<{ success: boolean; found: boolean; vehicle: Vehicle }>(
         `/vehicles/${id}/refresh`,

@@ -29,6 +29,12 @@ export const vehicles = sqliteTable("vehicles", {
   serviceIntervalMonths: integer("service_interval_months"),
   // SORN status (manual override; DVLA taxStatus "SORN" is also respected)
   manualSorn: integer("manual_sorn", { mode: "boolean" }).default(false),
+  // Archive fields
+  archivedAt: text("archived_at"),
+  archiveReason: text("archive_reason"), // 'sold' | 'scrapped' | 'other'
+  saleDate: text("sale_date"),
+  buyerName: text("buyer_name"),
+  buyerContact: text("buyer_contact"),
   // Metadata
   dvlaLastRefreshed: text("dvla_last_refreshed"),
   createdAt: text("created_at")

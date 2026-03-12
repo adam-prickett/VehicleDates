@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { db } from "../db/client.js";
 import { vehicles } from "../db/schema.js";
 import { fetchDvlaVehicle } from "../services/dvla.js";
-import { eq } from "drizzle-orm";
+import { eq, isNull } from "drizzle-orm";
 
 async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -12,7 +12,7 @@ export async function refreshAllVehicles(): Promise<{
   success: number;
   failed: number;
 }> {
-  const all = await db.select().from(vehicles);
+  const all = await db.select().from(vehicles).where(isNull(vehicles.archivedAt));
   let success = 0;
   let failed = 0;
 

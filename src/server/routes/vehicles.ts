@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, isNull, isNotNull } from "drizzle-orm";
 import { db } from "../db/client.js";
 import { vehicles } from "../db/schema.js";
 import { fetchDvlaVehicle, DvlaApiError } from "../services/dvla.js";
@@ -18,6 +18,13 @@ const addVehicleSchema = z.object({
   v5DocumentNumber: z.string().optional(),
   model: z.string().optional(),
   notes: z.string().optional(),
+});
+
+const archiveVehicleSchema = z.object({
+  reason: z.enum(["sold", "scrapped", "other"]),
+  saleDate: z.string().optional().nullable(),
+  buyerName: z.string().optional().nullable(),
+  buyerContact: z.string().optional().nullable(),
 });
 
 const updateVehicleSchema = z.object({
@@ -79,7 +86,10 @@ async function refreshVehicleFromDvla(vehicleId: number, reg: string) {
 
 export const vehiclesRouter = new Hono()
   .get("/", async (c) => {
-    const all = await db.select().from(vehicles).orderBy(vehicles.createdAt);
+    const archived = c.req.query("archived") === "true";
+    const all = archived
+      ? await db.select().from(vehicles).where(isNotNull(vehicles.archivedAt)).orderBy(vehicles.archivedAt)
+      : await db.select().from(vehicles).where(isNull(vehicles.archivedAt)).orderBy(vehicles.createdAt);
     return c.json(all);
   })
 
@@ -159,6 +169,53 @@ export const vehiclesRouter = new Hono()
 
     if (!deleted) return c.json({ error: "Not found" }, 404);
     return c.json({ success: true });
+  })
+
+  .post("/:id/archive", zValidator("json", archiveVehicleSchema), async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const data = c.req.valid("json");
+    const now = new Date().toISOString();
+
+    const [updated] = await db
+      .update(vehicles)
+      .set({
+        archivedAt: now,
+        archiveReason: data.reason,
+        saleDate: data.reason === "sold" ? (data.saleDate ?? null) : null,
+        buyerName: data.reason === "sold" ? (data.buyerName ?? null) : null,
+        buyerContact: data.reason === "sold" ? (data.buyerContact ?? null) : null,
+        updatedAt: now,
+      })
+      .where(eq(vehicles.id, id))
+      .returning();
+
+    if (!updated) return c.json({ error: "Not found" }, 404);
+    return c.json(updated);
+  })
+
+  .post("/:id/unarchive", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const now = new Date().toISOString();
+
+    const [updated] = await db
+      .update(vehicles)
+      .set({
+        archivedAt: null,
+        archiveReason: null,
+        saleDate: null,
+        buyerName: null,
+        buyerContact: null,
+        updatedAt: now,
+      })
+      .where(eq(vehicles.id, id))
+      .returning();
+
+    if (!updated) return c.json({ error: "Not found" }, 404);
+    return c.json(updated);
   })
 
   .post("/:id/refresh", async (c) => {

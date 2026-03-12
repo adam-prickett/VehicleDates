@@ -20,6 +20,11 @@ export interface Vehicle {
   serviceDate: string | null;
   serviceIntervalMonths: number | null;
   manualSorn: boolean | null;
+  archivedAt: string | null;
+  archiveReason: string | null;
+  saleDate: string | null;
+  buyerName: string | null;
+  buyerContact: string | null;
   dvlaLastRefreshed: string | null;
   createdAt: string;
   updatedAt: string;

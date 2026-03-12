@@ -124,10 +124,18 @@ function AlertBanner({ alerts }: { alerts: Alert[] }) {
 }
 
 export function VehicleListPage() {
+  const [showArchived, setShowArchived] = useState(false);
+
   const { data: vehicles, isLoading, error } = useQuery({
     queryKey: ["vehicles"],
-    queryFn: api.vehicles.list,
+    queryFn: () => api.vehicles.list(),
     refetchInterval: 60_000,
+  });
+
+  const { data: archivedVehicles } = useQuery({
+    queryKey: ["vehicles", "archived"],
+    queryFn: () => api.vehicles.list(true),
+    enabled: showArchived,
   });
 
   if (isLoading) {
@@ -183,6 +191,10 @@ export function VehicleListPage() {
 
   const alerts = getAlerts(vehicles);
 
+  const sortedArchived = archivedVehicles
+    ? [...archivedVehicles].sort((a, b) => a.registrationNumber.localeCompare(b.registrationNumber))
+    : [];
+
   return (
     <div>
       <AlertBanner alerts={alerts} />
@@ -197,6 +209,38 @@ export function VehicleListPage() {
         {sorted.map((vehicle) => (
           <VehicleCard key={vehicle.id} vehicle={vehicle} />
         ))}
+      </div>
+
+      {/* Archived section */}
+      <div className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-6">
+        <button
+          onClick={() => setShowArchived((v) => !v)}
+          className="flex items-center gap-2 text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showArchived ? "rotate-90" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          Archived vehicles{archivedVehicles ? ` (${archivedVehicles.length})` : ""}
+        </button>
+
+        {showArchived && (
+          <div className="mt-4">
+            {sortedArchived.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No archived vehicles</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedArchived.map((vehicle) => (
+                  <VehicleCard key={vehicle.id} vehicle={vehicle} archived />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
