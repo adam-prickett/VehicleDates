@@ -8,8 +8,8 @@ RUN npm ci
 
 COPY . .
 
-# Generate Drizzle migrations and build the Vite frontend
-RUN npm run db:generate && npm run build
+# Build the Vite frontend
+RUN npm run build
 
 # ── Stage 2: Production ───────────────────────────────────────────────────────
 FROM node:22-alpine

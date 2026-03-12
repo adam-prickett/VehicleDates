@@ -5,7 +5,6 @@ dist-server/
 *.db
 *.db-shm
 *.db-wal
-drizzle/
 .claude/
 .vscode/
 .idea/

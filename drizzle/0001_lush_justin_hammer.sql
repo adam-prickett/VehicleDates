@@ -1,0 +1,1 @@
+ALTER TABLE `vehicles` ADD `manual_sorn` integer DEFAULT false;
