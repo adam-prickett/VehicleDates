@@ -128,6 +128,26 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 Changing `JWT_SECRET` invalidates all existing sessions (all users will be signed out).
 
+## Resetting a Lost Admin Password
+
+If you are locked out of the admin account, you can reset a password directly on the server without going through the web interface. This requires shell (SSH) access to the machine running the app.
+
+```bash
+# Reset the first admin account found
+npm run reset-admin-password
+
+# Reset a specific user by username
+npm run reset-admin-password -- --username alice
+```
+
+You will be prompted to enter and confirm the new password (input is hidden). The change takes effect immediately — no restart required.
+
+In Docker:
+
+```bash
+docker compose exec app npm run reset-admin-password
+```
+
 ## User Management
 
 On first launch, the setup wizard creates an administrator account. Admins can manage users via the people icon in the navbar:

@@ -12,7 +12,8 @@
     "start:prod": "tsx src/server/index.ts",
     "build:server": "tsc -p tsconfig.server.json",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/server/db/migrate.ts"
+    "db:migrate": "tsx src/server/db/migrate.ts",
+    "reset-admin-password": "tsx src/server/scripts/resetAdminPassword.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
