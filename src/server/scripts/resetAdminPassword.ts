@@ -12,8 +12,22 @@ import "dotenv/config";
 import { createInterface } from "readline";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
-import { db } from "../db/client.js";
-import { users } from "../db/schema.js";
+import Database from "better-sqlite3";
+import { drizzle } from "drizzle-orm/better-sqlite3";
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+
+// Inline schema — avoids .js module resolution issues in a standalone script
+const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  role: text("role", { enum: ["admin", "user"] }).notNull().default("user"),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+const sqlite = new Database(process.env.DATABASE_URL ?? "./vehicles.db");
+const db = drizzle(sqlite);
 
 function prompt(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
