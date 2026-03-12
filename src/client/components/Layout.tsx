@@ -2,14 +2,17 @@ import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTheme } from "../hooks/useTheme.ts";
+import { useAuth } from "../context/AuthContext.tsx";
 import { api } from "../api.ts";
 
 export function Layout() {
   const location = useLocation();
   const isAdd = location.pathname === "/vehicles/add";
   const isSettings = location.pathname === "/settings";
+  const isUsers = location.pathname === "/users";
   const isListPage = location.pathname === "/vehicles";
   const { dark, toggle } = useTheme();
+  const { user, logout } = useAuth();
   const queryClient = useQueryClient();
   const [refreshResult, setRefreshResult] = useState<{ success: number; failed: number } | null>(null);
 
@@ -20,6 +23,10 @@ export function Layout() {
       setRefreshResult(result);
       setTimeout(() => setRefreshResult(null), 4000);
     },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: logout,
   });
 
   return (
@@ -70,6 +77,19 @@ export function Layout() {
               </svg>
             </button>
 
+            {/* Users (admin only) */}
+            {user?.role === "admin" && (
+              <Link
+                to="/users"
+                title="User Management"
+                className={`p-2 rounded-lg transition-colors cursor-pointer ${isUsers ? "text-white bg-blue-600 dark:bg-blue-800" : "text-blue-200 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-800"}`}
+              >
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </Link>
+            )}
+
             {/* Settings */}
             <Link
               to="/settings"
@@ -81,6 +101,21 @@ export function Layout() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </Link>
+
+            {/* User + logout */}
+            <div className="flex items-center gap-1 border-l border-blue-600 dark:border-blue-700 pl-2 ml-1">
+              <span className="text-xs text-blue-200 dark:text-blue-300 hidden sm:inline">{user?.username}</span>
+              <button
+                onClick={() => logoutMutation.mutate()}
+                disabled={logoutMutation.isPending}
+                title="Sign out"
+                className="p-2 rounded-lg text-blue-200 hover:text-white hover:bg-blue-600 dark:hover:bg-blue-800 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </button>
+            </div>
 
             {!isAdd && !isSettings && (
               <Link

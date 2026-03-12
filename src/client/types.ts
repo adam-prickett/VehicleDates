@@ -1,3 +1,17 @@
+export interface AuthUser {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+}
+
+export interface User {
+  id: number;
+  username: string;
+  role: "admin" | "user";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Vehicle {
   id: number;
   registrationNumber: string;

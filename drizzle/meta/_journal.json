@@ -29,6 +29,13 @@
       "when": 1773317026765,
       "tag": "0003_jittery_boomer",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1773324152918,
+      "tag": "0004_outgoing_sunspot",
+      "breakpoints": true
     }
   ]
 }

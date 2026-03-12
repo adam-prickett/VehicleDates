@@ -11,7 +11,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { vehiclesRouter } from "./routes/vehicles.js";
 import { settingsRouter } from "./routes/settings.js";
+import { authRouter } from "./routes/auth.js";
+import { usersRouter } from "./routes/users.js";
 import { startScheduledRefresh } from "./jobs/dvlaRefresh.js";
+import { requireAuth } from "./middleware/auth.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,8 +44,15 @@ app.use(
   })
 );
 
+app.route("/api/auth", authRouter);
+
+app.use("/api/vehicles/*", requireAuth);
+app.use("/api/settings/*", requireAuth);
+app.use("/api/users/*", requireAuth);
+
 app.route("/api/vehicles", vehiclesRouter);
 app.route("/api/settings", settingsRouter);
+app.route("/api/users", usersRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));

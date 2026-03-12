@@ -1,4 +1,4 @@
-import type { Vehicle } from "./types.ts";
+import type { Vehicle, AuthUser, User } from "./types.ts";
 
 const BASE = "/api";
 
@@ -12,6 +12,9 @@ async function request<T>(
   });
 
   if (!res.ok) {
+    if (res.status === 401) {
+      window.dispatchEvent(new Event("auth:unauthorized"));
+    }
     const body = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(body?.error ?? `Request failed: ${res.status}`);
   }
@@ -20,6 +23,24 @@ async function request<T>(
 }
 
 export const api = {
+  auth: {
+    me: () => request<AuthUser>("/auth/me"),
+    setupStatus: () => request<{ needed: boolean }>("/auth/setup"),
+    login: (username: string, password: string) =>
+      request<AuthUser>("/auth/login", { method: "POST", body: JSON.stringify({ username, password }) }),
+    logout: () => request<{ success: boolean }>("/auth/logout", { method: "POST" }),
+    setup: (username: string, password: string) =>
+      request<AuthUser>("/auth/setup", { method: "POST", body: JSON.stringify({ username, password }) }),
+  },
+  users: {
+    list: () => request<User[]>("/users"),
+    create: (data: { username: string; password: string; role: "admin" | "user" }) =>
+      request<User>("/users", { method: "POST", body: JSON.stringify(data) }),
+    changePassword: (id: number, password: string) =>
+      request<User>(`/users/${id}/password`, { method: "PUT", body: JSON.stringify({ password }) }),
+    delete: (id: number) =>
+      request<{ success: boolean }>(`/users/${id}`, { method: "DELETE" }),
+  },
   settings: {
     getDvlaKey: () =>
       request<{ isSet: boolean; hint: string | null; source: "database" | "environment" | null }>(
