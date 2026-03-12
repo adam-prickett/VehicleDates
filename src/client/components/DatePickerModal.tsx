@@ -10,6 +10,7 @@ import {
   isSameDay,
   isToday,
   addMonths,
+  addDays,
   subMonths,
   parseISO,
   isValid,
@@ -54,10 +55,12 @@ export function DatePickerModal({
     return () => { document.body.style.overflow = ""; };
   }, []);
 
-  const days = eachDayOfInterval({
-    start: startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 1 }),
-    end: endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 1 }),
-  });
+  const gridStart = startOfWeek(startOfMonth(viewMonth), { weekStartsOn: 1 });
+  const days = eachDayOfInterval({ start: gridStart, end: endOfWeek(endOfMonth(viewMonth), { weekStartsOn: 1 }) });
+  // Always pad to 42 cells (6 rows) so the grid height never changes
+  while (days.length < 42) {
+    days.push(addDays(days[days.length - 1], 1));
+  }
 
   const weekDays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
