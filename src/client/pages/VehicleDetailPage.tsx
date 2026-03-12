@@ -45,6 +45,7 @@ function InfoRow({ label, value }: { label: string; value: string | number | nul
 }
 
 interface EditState {
+  make: string;
   model: string;
   colour: string;
   v5DocumentNumber: string;
@@ -57,6 +58,7 @@ interface EditState {
 
 function toEditState(v: Vehicle): EditState {
   return {
+    make: v.make ?? "",
     model: v.model ?? "",
     colour: v.colour ?? "",
     v5DocumentNumber: v.v5DocumentNumber ?? "",
@@ -130,6 +132,7 @@ export function VehicleDetailPage() {
   function handleSave() {
     if (!editState) return;
     updateMutation.mutate({
+      make: editState.make || null,
       model: editState.model || null,
       colour: editState.colour || null,
       v5DocumentNumber: editState.v5DocumentNumber || null,
@@ -297,6 +300,10 @@ export function VehicleDetailPage() {
 
           <fieldset className="space-y-3">
             <legend className={legendCls}>Vehicle Info</legend>
+            <div>
+              <label className={labelCls}>Make <span className="text-gray-400 font-normal">(overrides DVLA)</span></label>
+              <input type="text" value={editState.make} onChange={(e) => setEditState({ ...editState, make: e.target.value })} placeholder="e.g. Volkswagen" className={inputCls} />
+            </div>
             <div>
               <label className={labelCls}>Model</label>
               <input type="text" value={editState.model} onChange={(e) => setEditState({ ...editState, model: e.target.value })} placeholder="e.g. Golf GTI" className={inputCls} />

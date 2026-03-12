@@ -22,6 +22,7 @@ const addVehicleSchema = z.object({
 
 const updateVehicleSchema = z.object({
   v5DocumentNumber: z.string().optional().nullable(),
+  make: z.string().optional().nullable(),
   model: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   colour: z.string().optional().nullable(),
