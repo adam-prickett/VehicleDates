@@ -12,6 +12,8 @@ A mobile-friendly web app for tracking important dates across all your vehicles 
 - **Date tracking** — track Tax, MOT, Insurance and Service dates with tap-to-edit calendar pickers
 - **Dashboard alerts** — colour-coded notifications at the top of the dashboard for any dates expiring within 30 days or already overdue
 - **SORN support** — mark vehicles as SORN; Tax alerts are suppressed and the Tax badge shows SORN status
+- **Vehicle archiving** — archive sold or scrapped vehicles, optionally recording sale date and buyer details
+- **User accounts** — username/password login with admin and standard roles; first-launch setup wizard creates the initial admin account
 - **Dark mode** — toggleable, with preference saved to `localStorage` and OS preference respected on first visit
 - **Export / Import** — back up all vehicle data as JSON and restore it on any device
 - **Responsive** — works on mobile, tablet and desktop; grid layout on larger screens
@@ -29,13 +31,14 @@ The easiest way to run Vehicle Dates is with Docker Compose.
 git clone <repo-url>
 cd VehicleDates
 
-# 2. (Optional) set your DVLA API key
-export DVLA_API_KEY=your_key_here
+# 2. Set required environment variables
+export JWT_SECRET=$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
+export DVLA_API_KEY=your_key_here   # optional
 
 # 3. Build and start
 docker compose up -d
 
-# 4. Open in your browser
+# 4. Open in your browser — you will be prompted to create an admin account
 open http://localhost:3001
 ```
 
@@ -65,7 +68,7 @@ npm install
 
 # 2. Create your environment file
 cp .env.example .env
-# Edit .env and add your DVLA_API_KEY (optional — can also be set in Settings)
+# Edit .env — at minimum set JWT_SECRET (see below)
 
 # 3. Run database migrations
 npm run db:migrate
@@ -78,7 +81,7 @@ This starts:
 - **API server** on `http://localhost:3001` (with hot-reload via `tsx watch`)
 - **Vite dev server** on `http://localhost:5173` (proxies `/api` to the server)
 
-Open `http://localhost:5173` in your browser.
+Open `http://localhost:5173`. On first launch you will be prompted to create an administrator account.
 
 ---
 
@@ -107,10 +110,31 @@ Set `DVLA_API_KEY` in your `.env` file (local dev) or in `docker-compose.yml`. T
 
 | Variable | Default | Description |
 |---|---|---|
+| `JWT_SECRET` | _(insecure default)_ | Secret used to sign session tokens — **must be set in production** |
 | `DVLA_API_KEY` | _(none)_ | DVLA Vehicle Enquiry Service API key (optional if set via Settings) |
 | `DATABASE_URL` | `./vehicles.db` | Path to the SQLite database file |
 | `PORT` | `3001` | Port the server listens on |
 | `NODE_ENV` | _(none)_ | Set to `production` to enable static file serving from `dist/` |
+
+### JWT_SECRET
+
+Sessions are signed with an HS256 JWT stored in an HTTP-only cookie. You must set `JWT_SECRET` to a long random string before deploying — the server will log a warning at startup if it is missing or set to the default value.
+
+Generate one with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Changing `JWT_SECRET` invalidates all existing sessions (all users will be signed out).
+
+## User Management
+
+On first launch, the setup wizard creates an administrator account. Admins can manage users via the people icon in the navbar:
+
+- **Add users** — choose username, password, and role (admin or standard)
+- **Change passwords** — admins can change any password; standard users can change their own
+- **Delete users** — admins can delete any account except their own and the last remaining admin
 
 ---
 
@@ -150,4 +174,5 @@ This makes it straightforward to move data between devices or restore from a bac
 | Data fetching | [TanStack Query](https://tanstack.com/query) |
 | Routing | [React Router v7](https://reactrouter.com/) |
 | Scheduling | [node-cron](https://github.com/node-cron/node-cron) |
+| Auth | [jose](https://github.com/panva/jose) (JWT) + [bcryptjs](https://github.com/dcodeIO/bcrypt.js) |
 | Validation | [Zod](https://zod.dev/) |
