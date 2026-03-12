@@ -111,12 +111,12 @@ export function DateBadge({ label, date, status, showStatus, onClick, sorn }: Da
       ) : (
         <div className="mt-1 font-semibold text-sm">{formatDate(date)}</div>
       )}
-      {showStatus && status && !sorn && (
-        <div className="text-xs opacity-75 mt-0.5">{status}</div>
-      )}
-      {daysText && (
-        <div className="text-xs opacity-75 mt-0.5">{daysText}</div>
-      )}
+      <div className={`text-xs mt-0.5 ${showStatus && status && !sorn ? "opacity-75" : "invisible"}`}>
+        {showStatus && status && !sorn ? status : "\u00A0"}
+      </div>
+      <div className={`text-xs ${daysText ? "opacity-75" : "invisible"}`}>
+        {daysText || "\u00A0"}
+      </div>
     </Tag>
   );
 }
