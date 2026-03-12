@@ -49,8 +49,9 @@ export function SetupPage() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
+              <label htmlFor="username" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
               <input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -62,8 +63,9 @@ export function SetupPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
+              <label htmlFor="password" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -75,8 +77,9 @@ export function SetupPage() {
               <p className="text-xs text-gray-400 mt-1">Minimum 8 characters</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Confirm Password</label>
+              <label htmlFor="confirm" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Confirm Password</label>
               <input
+                id="confirm"
                 type="password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}

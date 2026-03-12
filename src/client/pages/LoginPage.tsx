@@ -44,8 +44,9 @@ export function LoginPage() {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
+              <label htmlFor="username" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Username</label>
               <input
+                id="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -56,8 +57,9 @@ export function LoginPage() {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
+              <label htmlFor="password" className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password</label>
               <input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

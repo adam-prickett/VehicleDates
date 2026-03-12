@@ -13,7 +13,9 @@
     "build:server": "tsc -p tsconfig.server.json",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
-    "reset-admin-password": "tsx src/server/scripts/resetAdminPassword.ts"
+    "reset-admin-password": "tsx src/server/scripts/resetAdminPassword.ts",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
@@ -31,6 +33,9 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.13.10",
@@ -41,10 +46,12 @@
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.1.2",
     "drizzle-kit": "^0.30.4",
+    "jsdom": "^28.1.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "vite": "^6.2.1"
+    "vite": "^6.2.1",
+    "vitest": "^4.1.0"
   }
 }
