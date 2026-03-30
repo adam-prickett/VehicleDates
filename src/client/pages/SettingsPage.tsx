@@ -62,7 +62,7 @@ function DvlaKeySection() {
             <div className="flex-1">
               <p className="text-sm font-medium text-green-800 dark:text-green-300">API key configured</p>
               <p className="text-xs text-green-600 dark:text-green-500 font-mono mt-0.5">
-                {showKey ? keyInfo.hint : keyInfo.hint?.replace(/●/g, "●")} &nbsp;
+                {keyInfo.hint} &nbsp;
                 <span className="text-xs text-green-600 dark:text-green-500">
                   via {keyInfo.source === "environment" ? ".env file" : "settings"}
                 </span>
