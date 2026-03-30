@@ -219,17 +219,6 @@ export function VehicleDetailPage() {
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{displayName}</p>
         </div>
-        <button
-          onClick={() => updateMutation.mutate({ manualSorn: !vehicle.manualSorn })}
-          disabled={updateMutation.isPending}
-          className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors disabled:opacity-50 cursor-pointer ${
-            vehicle.manualSorn
-              ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 border-purple-300 dark:border-purple-700 hover:bg-purple-200 dark:hover:bg-purple-800"
-              : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-600"
-          }`}
-        >
-          {vehicle.manualSorn ? "Remove SORN" : "Mark SORN"}
-        </button>
       </div>
 
       {/* Archived Banner */}
@@ -307,6 +296,10 @@ export function VehicleDetailPage() {
             quickDateMutation.mutate({ [datePickerField]: newDate })
           }
           onClose={() => setDatePickerField(null)}
+          {...(datePickerField === "taxDueDate" && {
+            isSorn: sorn,
+            onToggleSorn: () => updateMutation.mutate({ manualSorn: !vehicle.manualSorn }),
+          })}
         />
       )}
 
@@ -340,6 +333,20 @@ export function VehicleDetailPage() {
             {refreshMutation.isPending ? "Refreshing..." : "Refresh from DVLA"}
           </button>
         </div>
+        <a
+          href={`https://www.check-mot.service.gov.uk/results?registration=${encodeURIComponent(vehicle.registrationNumber)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-3 flex items-center justify-center gap-2 w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 font-semibold px-3 py-2 rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+        >
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          View MOT History
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24" className="ml-auto opacity-50">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+          </svg>
+        </a>
         {refreshMutation.isPending && (
           <div className="mt-3 rounded-lg overflow-hidden">
             <DrivingAnimation />

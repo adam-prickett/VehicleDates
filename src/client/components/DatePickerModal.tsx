@@ -23,6 +23,8 @@ interface DatePickerModalProps {
   onSave: (date: string | null) => void;
   onClose: () => void;
   isSaving?: boolean;
+  isSorn?: boolean;
+  onToggleSorn?: () => void;
 }
 
 export function DatePickerModal({
@@ -32,6 +34,8 @@ export function DatePickerModal({
   onSave,
   onClose,
   isSaving,
+  isSorn,
+  onToggleSorn,
 }: DatePickerModalProps) {
   const initialDate = date && isValid(parseISO(date)) ? parseISO(date) : null;
   const [viewMonth, setViewMonth] = useState(initialDate ?? new Date());
@@ -165,6 +169,32 @@ export function DatePickerModal({
             })}
           </div>
         </div>
+
+        {/* SORN toggle */}
+        {onToggleSorn !== undefined && (
+          <div className="mx-4 mb-1 border border-purple-200 dark:border-purple-700 rounded-xl px-4 py-3 flex items-center justify-between gap-3 bg-purple-50 dark:bg-purple-900/30">
+            <div>
+              <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">SORN</p>
+              <p className="text-xs text-purple-600 dark:text-purple-400">Statutory Off Road Notification</p>
+            </div>
+            <button
+              onClick={onToggleSorn}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors cursor-pointer focus:outline-none ${
+                isSorn
+                  ? "bg-purple-600 border-purple-600"
+                  : "bg-gray-200 dark:bg-gray-600 border-gray-200 dark:border-gray-600"
+              }`}
+              role="switch"
+              aria-checked={isSorn}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5 ${
+                  isSorn ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-2 px-4 pb-5 pt-3">

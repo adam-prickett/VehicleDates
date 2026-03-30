@@ -14,8 +14,11 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
+import { fileURLToPath } from "url";
+import { join, dirname } from "path";
 
 // Inline schema — avoids .js module resolution issues in a standalone script
 const users = sqliteTable("users", {
@@ -28,6 +31,9 @@ const users = sqliteTable("users", {
 
 const sqlite = new Database(process.env.DATABASE_URL ?? "./vehicles.db");
 const db = drizzle(sqlite);
+
+const migrationsFolder = join(dirname(fileURLToPath(import.meta.url)), "../../../drizzle");
+migrate(db, { migrationsFolder });
 
 function prompt(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });

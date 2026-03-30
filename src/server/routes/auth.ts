@@ -12,7 +12,7 @@ const COOKIE_OPTS = {
   httpOnly: true,
   sameSite: "Lax" as const,
   path: "/",
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+  maxAge: 60 * 60 * 24 * 400, // 400 days (browser/spec maximum)
   secure: process.env.NODE_ENV === "production",
 };
 
