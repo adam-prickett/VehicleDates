@@ -165,6 +165,17 @@ describe("PUT /vehicles/:id", () => {
     expect((await res.json()).model).toBeNull();
   });
 
+  it("toggles manualSorn", async () => {
+    const cookie = await adminCookie();
+    const { id } = await (await post(app, "/vehicles", { registrationNumber: "AA11AAA" }, cookie)).json();
+
+    const on = await (await put(app, `/vehicles/${id}`, { manualSorn: true }, cookie)).json();
+    expect(on.manualSorn).toBe(true);
+
+    const off = await (await put(app, `/vehicles/${id}`, { manualSorn: false }, cookie)).json();
+    expect(off.manualSorn).toBe(false);
+  });
+
   it("refreshes updatedAt", async () => {
     const cookie = await adminCookie();
     const created = await (await post(app, "/vehicles", { registrationNumber: "AA11AAA" }, cookie)).json();
