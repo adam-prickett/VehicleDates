@@ -53,7 +53,7 @@ export function VehicleCard({ vehicle, archived }: VehicleCardProps) {
   return (
     <Link to={`/vehicles/${vehicle.id}`} className="block group h-full cursor-pointer">
       <div
-        className={`rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 h-full flex flex-col ${archived ? "bg-gray-50 dark:bg-gray-900 opacity-75" : "bg-white dark:bg-gray-800"} ${statusBanner[archived ? "unknown" : status]}`}
+        className={`rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 h-full flex flex-col ${archived ? "bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700" : "bg-white dark:bg-gray-800"} ${statusBanner[archived ? "unknown" : status]}`}
       >
         <div className="flex items-start justify-between gap-2 mb-3 flex-1">
           <div>
