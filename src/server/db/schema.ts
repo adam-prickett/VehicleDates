@@ -48,6 +48,27 @@ export const vehicles = sqliteTable("vehicles", {
 export type Vehicle = typeof vehicles.$inferSelect;
 export type InsertVehicle = typeof vehicles.$inferInsert;
 
+export const serviceTasks = sqliteTable("service_tasks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  vehicleId: integer("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  date: text("date").notNull(),
+  mileage: integer("mileage"),
+  cost: integer("cost"),
+  notes: text("notes"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
+export type ServiceTask = typeof serviceTasks.$inferSelect;
+export type InsertServiceTask = typeof serviceTasks.$inferInsert;
+
 export type User = typeof users.$inferSelect;
 
 export const users = sqliteTable("users", {

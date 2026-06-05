@@ -43,3 +43,15 @@ export interface Vehicle {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface ServiceTask {
+  id: number;
+  vehicleId: number;
+  type: string;
+  date: string;
+  mileage: number | null;
+  cost: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

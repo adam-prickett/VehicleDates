@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq, isNull, isNotNull } from "drizzle-orm";
+import { and, eq, isNull, isNotNull } from "drizzle-orm";
 import { db } from "../db/client.js";
-import { vehicles } from "../db/schema.js";
+import { vehicles, serviceTasks } from "../db/schema.js";
 import { fetchDvlaVehicle, DvlaApiError } from "../services/dvla.js";
 import { refreshAllVehicles } from "../jobs/dvlaRefresh.js";
 
@@ -26,6 +26,16 @@ const archiveVehicleSchema = z.object({
   buyerName: z.string().optional().nullable(),
   buyerContact: z.string().optional().nullable(),
 });
+
+const serviceTaskSchema = z.object({
+  type: z.string().min(1).max(100),
+  date: z.string().min(1),
+  mileage: z.number().int().nonnegative().optional().nullable(),
+  cost: z.number().int().nonnegative().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+const updateServiceTaskSchema = serviceTaskSchema.partial();
 
 const updateVehicleSchema = z.object({
   v5DocumentNumber: z.string().optional().nullable(),
@@ -258,4 +268,84 @@ export const vehiclesRouter = new Hono()
     } catch (err) {
       return c.json({ error: "Failed to refresh vehicles from DVLA" }, 500);
     }
+  })
+
+  .get("/:id/service-tasks", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const tasks = await db
+      .select()
+      .from(serviceTasks)
+      .where(eq(serviceTasks.vehicleId, id))
+      .orderBy(serviceTasks.date);
+
+    return c.json(tasks);
+  })
+
+  .post("/:id/service-tasks", zValidator("json", serviceTaskSchema), async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const [vehicle] = await db
+      .select({ id: vehicles.id })
+      .from(vehicles)
+      .where(eq(vehicles.id, id))
+      .limit(1);
+    if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
+
+    const data = c.req.valid("json");
+    const now = new Date().toISOString();
+
+    const [inserted] = await db
+      .insert(serviceTasks)
+      .values({
+        vehicleId: id,
+        type: data.type,
+        date: data.date,
+        mileage: data.mileage ?? null,
+        cost: data.cost ?? null,
+        notes: data.notes ?? null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    return c.json(inserted, 201);
+  })
+
+  .put(
+    "/:id/service-tasks/:taskId",
+    zValidator("json", updateServiceTaskSchema),
+    async (c) => {
+      const id = parseInt(c.req.param("id"));
+      const taskId = parseInt(c.req.param("taskId"));
+      if (isNaN(id) || isNaN(taskId)) return c.json({ error: "Invalid ID" }, 400);
+
+      const data = c.req.valid("json");
+      const now = new Date().toISOString();
+
+      const [updated] = await db
+        .update(serviceTasks)
+        .set({ ...data, updatedAt: now })
+        .where(and(eq(serviceTasks.id, taskId), eq(serviceTasks.vehicleId, id)))
+        .returning();
+
+      if (!updated) return c.json({ error: "Not found" }, 404);
+      return c.json(updated);
+    }
+  )
+
+  .delete("/:id/service-tasks/:taskId", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    const taskId = parseInt(c.req.param("taskId"));
+    if (isNaN(id) || isNaN(taskId)) return c.json({ error: "Invalid ID" }, 400);
+
+    const [deleted] = await db
+      .delete(serviceTasks)
+      .where(and(eq(serviceTasks.id, taskId), eq(serviceTasks.vehicleId, id)))
+      .returning();
+
+    if (!deleted) return c.json({ error: "Not found" }, 404);
+    return c.json({ success: true });
   });

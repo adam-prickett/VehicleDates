@@ -6,6 +6,7 @@ import { DateBadge } from "../components/DateBadge.tsx";
 import { DatePickerModal } from "../components/DatePickerModal.tsx";
 import { RegistrationPlate } from "../components/RegistrationPlate.tsx";
 import { DrivingAnimation } from "../components/DrivingAnimation.tsx";
+import { ServiceTasksSection } from "../components/ServiceTasksSection.tsx";
 import type { Vehicle } from "../types.ts";
 
 type DateField = "taxDueDate" | "motExpiryDate" | "insuranceExpiryDate" | "serviceDate";
@@ -473,6 +474,9 @@ export function VehicleDetailPage() {
           )}
         </div>
       )}
+
+      {/* Service Tasks */}
+      <ServiceTasksSection vehicleId={vehicleId} />
 
       {/* Archive */}
       {!vehicle.archivedAt && (

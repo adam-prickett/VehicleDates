@@ -10,6 +10,7 @@ A mobile-friendly web app for tracking important dates across all your vehicles 
 - **DVLA integration** — automatically fetches Tax status, Tax due date, MOT status and MOT expiry from the DVLA Vehicle Enquiry API
 - **Scheduled refresh** — DVLA data is updated nightly at 03:00 for all vehicles; a manual refresh button is available per vehicle and for all vehicles at once
 - **Date tracking** — track Tax, MOT, Insurance and Service dates with tap-to-edit calendar pickers
+- **Service history** — record individual service jobs against a vehicle (full service, oil change, brake pads, tyres, etc.) with date, mileage, cost and notes
 - **Dashboard alerts** — colour-coded notifications at the top of the dashboard for any dates expiring within 30 days or already overdue
 - **SORN support** — mark vehicles as SORN; Tax alerts are suppressed and the Tax badge shows SORN status
 - **Vehicle archiving** — archive sold or scrapped vehicles, optionally recording sale date and buyer details
@@ -169,6 +170,24 @@ npm run db:generate
 # Apply pending migrations manually
 npm run db:migrate
 ```
+
+---
+
+## Service History
+
+Each vehicle has its own log of service jobs, accessible from the vehicle detail page. Use it to keep a record of what was done, when, at what mileage and for how much.
+
+Each record captures:
+
+- **Type** — pick from common presets (Full Service, Interim Service, Oil Change, Brake Pads, Brake Discs, Tyres, Battery, Air Filter, Cabin Filter, Spark Plugs, Coolant Flush, Cambelt) or enter a custom value via **Other**
+- **Date** — when the work was carried out
+- **Mileage** — odometer reading at the time (optional)
+- **Cost** — entered in pounds and stored as integer pence (optional)
+- **Notes** — free-text (garage, parts replaced, oil grade, etc.)
+
+Records are sorted newest-first and can be edited or deleted at any time. When a vehicle is permanently removed, its service history is removed with it (cascade delete).
+
+This is separate from the **Next Service** date shown in the dates grid, which tracks the upcoming service due date.
 
 ---
 

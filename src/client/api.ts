@@ -1,4 +1,12 @@
-import type { Vehicle, AuthUser, User } from "./types.ts";
+import type { Vehicle, AuthUser, User, ServiceTask } from "./types.ts";
+
+interface ServiceTaskInput {
+  type: string;
+  date: string;
+  mileage?: number | null;
+  cost?: number | null;
+  notes?: string | null;
+}
 
 const BASE = "/api";
 
@@ -117,5 +125,24 @@ export const api = {
       request<{ success: number; failed: number }>("/vehicles/refresh-all", {
         method: "POST",
       }),
+  },
+  serviceTasks: {
+    list: (vehicleId: number) =>
+      request<ServiceTask[]>(`/vehicles/${vehicleId}/service-tasks`),
+    create: (vehicleId: number, data: ServiceTaskInput) =>
+      request<ServiceTask>(`/vehicles/${vehicleId}/service-tasks`, {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    update: (vehicleId: number, taskId: number, data: Partial<ServiceTaskInput>) =>
+      request<ServiceTask>(`/vehicles/${vehicleId}/service-tasks/${taskId}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    delete: (vehicleId: number, taskId: number) =>
+      request<{ success: boolean }>(
+        `/vehicles/${vehicleId}/service-tasks/${taskId}`,
+        { method: "DELETE" }
+      ),
   },
 };
