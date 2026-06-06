@@ -14,7 +14,8 @@ import { settingsRouter } from "./routes/settings.js";
 import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
 import { startScheduledRefresh } from "./jobs/dvlaRefresh.js";
-import { requireAuth } from "./middleware/auth.js";
+import { requireAuth, requireAdmin } from "./middleware/auth.js";
+import { requireSameOrigin } from "./middleware/sameOrigin.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,11 +44,12 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "DELETE"],
   })
 );
+app.use("/api/*", requireSameOrigin);
 
 app.route("/api/auth", authRouter);
 
 app.use("/api/vehicles/*", requireAuth);
-app.use("/api/settings/*", requireAuth);
+app.use("/api/settings/*", requireAuth, requireAdmin);
 app.use("/api/users/*", requireAuth);
 
 app.route("/api/vehicles", vehiclesRouter);

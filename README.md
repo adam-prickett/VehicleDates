@@ -2,6 +2,8 @@
 
 A mobile-friendly web app for tracking important dates across all your vehicles — Tax, MOT, Insurance and Service — with automatic data retrieval from the DVLA.
 
+See [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ---
 
 ## Features
@@ -113,16 +115,17 @@ Set `DVLA_API_KEY` in your `.env` file (local dev) or in `docker-compose.yml`. T
 
 | Variable | Default | Description |
 |---|---|---|
-| `JWT_SECRET` | _(insecure default)_ | Secret used to sign session tokens — **must be set in production** |
+| `JWT_SECRET` | _(required in production)_ | Secret used to sign session JWTs. The server **refuses to issue tokens** when `NODE_ENV=production` and this is missing or equals the dev default |
 | `DVLA_API_KEY` | _(none)_ | DVLA Vehicle Enquiry Service API key (optional if set via Settings) |
 | `DATABASE_URL` | `./vehicles.db` | Path to the SQLite database file |
 | `UPLOADS_DIR` | `./uploads` | Directory where uploaded files (e.g. insurance certificates) are stored — must be writable and should be on a persistent volume in production |
+| `ALLOWED_ORIGINS` | _(derived from `Host`)_ | Comma-separated list of origins permitted to make state-changing API requests. Defaults to the request's own host. Set explicitly when behind a reverse proxy that doesn't forward `X-Forwarded-Host` |
 | `PORT` | `3001` | Port the server listens on |
 | `NODE_ENV` | _(none)_ | Set to `production` to enable static file serving from `dist/` |
 
 ### JWT_SECRET
 
-Sessions are signed with an HS256 JWT stored in an HTTP-only cookie. You must set `JWT_SECRET` to a long random string before deploying — the server will log a warning at startup if it is missing or set to the default value.
+Sessions are signed with an HS256 JWT stored in an HTTP-only cookie. You **must** set `JWT_SECRET` to a long random string before running with `NODE_ENV=production` — the server will throw and refuse to mint tokens otherwise. The bundled `docker-compose.yml` requires the variable to be present (`${JWT_SECRET:?…}`) and will not start without it.
 
 Generate one with:
 
@@ -130,7 +133,28 @@ Generate one with:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-Changing `JWT_SECRET` invalidates all existing sessions (all users will be signed out).
+Changing `JWT_SECRET` invalidates every existing session (all users will be signed out). The same effect can be achieved per-user by logging out, changing a password, or running the admin password reset script — each of those bumps an internal `token_version` that JWTs are bound to.
+
+### CSRF protection
+
+State-changing API requests (POST/PUT/DELETE/PATCH) require a same-origin `Origin` (or `Referer` fallback) header. By default the server compares the value against its own `Host` (preferring `X-Forwarded-Host` if present) plus `http://localhost:5173` in development.
+
+If you run behind a reverse proxy that does **not** forward `X-Forwarded-Host`, set `ALLOWED_ORIGINS` explicitly:
+
+```
+ALLOWED_ORIGINS=https://vehicles.example.com
+```
+
+Multiple comma-separated origins are accepted.
+
+### Admin-only endpoints
+
+The following routes require the caller to have the `admin` role; standard users get `403 Forbidden`:
+
+- `GET/POST/DELETE /api/settings/dvla-key`
+- `GET /api/settings/export`
+- `POST /api/settings/import`
+- `GET/POST/DELETE /api/users` (already admin-only)
 
 ## Resetting a Lost Admin Password
 

@@ -22,7 +22,7 @@ vi.mock("../db/client.js", async () => {
 
 import { db } from "../db/client.js";
 import * as schema from "../db/schema.js";
-import { makeApp, post, get, extractCookie } from "./helpers.js";
+import { makeApp, post, get, put, extractCookie } from "./helpers.js";
 
 const app = makeApp();
 
@@ -124,6 +124,37 @@ describe("POST /auth/logout", () => {
     const setCookie = res.headers.get("set-cookie") ?? "";
     // Cookie should be cleared (max-age=0 or expires in the past)
     expect(setCookie).toMatch(/auth_token=;|auth_token=(?:;|$)/);
+  });
+
+  it("invalidates the previous token by bumping the user's tokenVersion", async () => {
+    const setup = await post(app, "/auth/setup", { username: "alice", password: "password123" });
+    const cookie = extractCookie(setup);
+
+    const beforeLogout = await get(app, "/auth/me", cookie);
+    expect(beforeLogout.status).toBe(200);
+
+    await post(app, "/auth/logout", {}, cookie);
+
+    // The same cookie should now be rejected, even though it hasn't expired
+    const afterLogout = await get(app, "/auth/me", cookie);
+    expect(afterLogout.status).toBe(401);
+  });
+});
+
+// ─── Password change invalidates sessions ─────────────────────────────────────
+
+describe("PUT /users/:id/password — session invalidation", () => {
+  it("invalidates all existing tokens for the user whose password changed", async () => {
+    const setup = await post(app, "/auth/setup", { username: "alice", password: "password123" });
+    const cookie = extractCookie(setup);
+    const me = await (await get(app, "/auth/me", cookie)).json();
+
+    const res = await put(app, `/users/${me.id}/password`, { password: "newpassword123" }, cookie);
+    expect(res.status).toBe(200);
+
+    // Old cookie should now be rejected
+    const reuse = await get(app, "/auth/me", cookie);
+    expect(reuse.status).toBe(401);
   });
 });
 

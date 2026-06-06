@@ -10,9 +10,18 @@ services:
       - PORT=3001
       - DATABASE_URL=/data/vehicles.db
       - UPLOADS_DIR=/data/uploads
+      # Required: long random string used to sign session JWTs. The container
+      # will refuse to start in production if this is unset or equals the
+      # insecure dev default. Generate with:
+      #   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set (see README)}
       # Optional: set your DVLA API key here, or configure it in the app's
       # Settings screen after first launch.
       - DVLA_API_KEY=${DVLA_API_KEY:-}
+      # Optional: comma-separated origins permitted for state-changing API
+      # requests. Set this when behind a reverse proxy that does not forward
+      # X-Forwarded-Host. Example: ALLOWED_ORIGINS=https://vehicles.example.com
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]

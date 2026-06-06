@@ -14,11 +14,9 @@ export const settingsRouter = new Hono()
   .get("/dvla-key", async (c) => {
     const key = await getEffectiveApiKey();
     const fromDb = await getSetting("dvla_api_key");
-    if (!key) return c.json({ isSet: false, hint: null, source: null });
-    const hint = key.length > 4 ? `${"●".repeat(key.length - 4)}${key.slice(-4)}` : "●●●●";
+    if (!key) return c.json({ isSet: false, source: null });
     return c.json({
       isSet: true,
-      hint,
       source: fromDb ? "database" : "environment",
     });
   })

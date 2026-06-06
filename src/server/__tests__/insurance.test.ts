@@ -84,7 +84,10 @@ async function uploadCertificate(app: ReturnType<typeof makeApp>, id: number, fi
   form.append("file", file);
   return app.request(`/vehicles/${id}/insurance-certificate`, {
     method: "POST",
-    headers: cookie ? { cookie } : {},
+    headers: {
+      origin: "http://localhost",
+      ...(cookie ? { cookie } : {}),
+    },
     body: form,
   });
 }
@@ -163,6 +166,72 @@ describe("POST /vehicles/:id/insurance-certificate", () => {
     expect(res.status).toBe(415);
   });
 
+  it("returns 415 when file contents do not match an allowed format", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+
+    // Declared as PDF but contents are HTML
+    const sneaky = new File(
+      [Buffer.from("<html><script>alert(1)</script></html>")],
+      "malicious.pdf",
+      { type: "application/pdf" }
+    );
+    const res = await uploadCertificate(app, id, sneaky, cookie);
+    expect(res.status).toBe(415);
+  });
+
+  it("returns 415 when declared and detected types disagree", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+
+    // Real PNG bytes, but declared as JPEG
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x00]);
+    const mismatched = new File([png], "image.jpg", { type: "image/jpeg" });
+    const res = await uploadCertificate(app, id, mismatched, cookie);
+    expect(res.status).toBe(415);
+  });
+
+  it("accepts a real PNG", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+    const file = new File([png], "cert.png", { type: "image/png" });
+    const res = await uploadCertificate(app, id, file, cookie);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.insuranceCertificateMimeType).toBe("image/png");
+  });
+
+  it("accepts a real JPEG", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+
+    const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(60, 0)]);
+    const file = new File([jpeg], "cert.jpg", { type: "image/jpeg" });
+    const res = await uploadCertificate(app, id, file, cookie);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.insuranceCertificateMimeType).toBe("image/jpeg");
+  });
+
+  it("accepts a real HEIC and stores canonical mime", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+
+    // ftypheic at offset 4
+    const heic = Buffer.concat([
+      Buffer.from([0x00, 0x00, 0x00, 0x20]),
+      Buffer.from("ftypheic", "ascii"),
+      Buffer.alloc(60, 0),
+    ]);
+    const file = new File([heic], "cert.heic", { type: "image/heic" });
+    const res = await uploadCertificate(app, id, file, cookie);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.insuranceCertificateMimeType).toBe("image/heic");
+  });
+
   it("returns 413 for a file larger than the 10 MB limit", async () => {
     const cookie = await adminCookie();
     const { id } = await createVehicle(cookie);
@@ -180,7 +249,7 @@ describe("POST /vehicles/:id/insurance-certificate", () => {
     form.append("other", "x");
     const res = await app.request(`/vehicles/${id}/insurance-certificate`, {
       method: "POST",
-      headers: { cookie },
+      headers: { cookie, origin: "http://localhost" },
       body: form,
     });
     expect(res.status).toBe(400);
@@ -200,6 +269,7 @@ describe("POST /vehicles/:id/insurance-certificate", () => {
     form.append("file", pdfFile());
     const res = await app.request(`/vehicles/${id}/insurance-certificate`, {
       method: "POST",
+      headers: { origin: "http://localhost" },
       body: form,
     });
     expect(res.status).toBe(401);
@@ -237,6 +307,25 @@ describe("GET /vehicles/:id/insurance-certificate", () => {
 
     const buf = Buffer.from(await res.arrayBuffer());
     expect(buf.length).toBe(64);
+  });
+
+  it("emits an RFC 6266 header with both ASCII fallback and UTF-8 filename*", async () => {
+    const cookie = await adminCookie();
+    const { id } = await createVehicle(cookie);
+    // Original name contains a non-ASCII character and a special quoting character
+    await uploadCertificate(app, id, pdfFile('renewal-£"2026.pdf', 64), cookie);
+
+    const res = await get(app, `/vehicles/${id}/insurance-certificate`, cookie);
+    expect(res.status).toBe(200);
+    const cd = res.headers.get("content-disposition") ?? "";
+    expect(cd).toMatch(/^attachment;/);
+    // ASCII fallback must NOT contain a raw double-quote or non-ASCII bytes
+    const fallback = cd.match(/filename="([^"]*)"/)?.[1] ?? "";
+    expect(fallback).not.toMatch(/[^\x20-\x7E]/);
+    expect(fallback).not.toContain('"');
+    // filename* must be present and URL-encode the non-ASCII byte
+    expect(cd).toMatch(/filename\*=UTF-8''/);
+    expect(cd).toContain("%C2%A3"); // UTF-8 of £
   });
 
   it("returns 404 when no certificate is uploaded", async () => {

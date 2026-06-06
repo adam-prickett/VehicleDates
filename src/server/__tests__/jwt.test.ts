@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { signToken, verifyToken } from "../lib/jwt.js";
 
 describe("signToken / verifyToken", () => {
@@ -33,5 +33,46 @@ describe("signToken / verifyToken", () => {
     expect(result?.sub).toBe("1");
     expect(result?.username).toBe("bob");
     expect(result?.role).toBe("user");
+  });
+
+  it("includes ver (token version) in the payload", async () => {
+    const token = await signToken({ sub: "1", username: "bob", role: "user", ver: 7 });
+    const result = await verifyToken(token);
+    expect(result?.ver).toBe(7);
+  });
+});
+
+describe("getSecret() — production safety", () => {
+  const originalSecret = process.env.JWT_SECRET;
+  const originalEnv = process.env.NODE_ENV;
+
+  afterEach(() => {
+    if (originalSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalSecret;
+    if (originalEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalEnv;
+  });
+
+  it("refuses to sign when NODE_ENV=production and JWT_SECRET is unset", async () => {
+    delete process.env.JWT_SECRET;
+    process.env.NODE_ENV = "production";
+    await expect(
+      signToken({ sub: "1", username: "x", role: "admin" })
+    ).rejects.toThrow(/JWT_SECRET must be set/);
+  });
+
+  it("refuses to sign when NODE_ENV=production and JWT_SECRET is the default", async () => {
+    process.env.JWT_SECRET = "dev-secret-change-me-in-production";
+    process.env.NODE_ENV = "production";
+    await expect(
+      signToken({ sub: "1", username: "x", role: "admin" })
+    ).rejects.toThrow(/JWT_SECRET must be set/);
+  });
+
+  it("allows the dev default in development", async () => {
+    delete process.env.JWT_SECRET;
+    process.env.NODE_ENV = "test";
+    const token = await signToken({ sub: "1", username: "x", role: "admin" });
+    expect(typeof token).toBe("string");
   });
 });

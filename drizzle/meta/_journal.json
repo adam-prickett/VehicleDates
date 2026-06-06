@@ -50,6 +50,13 @@
       "when": 1780696301338,
       "tag": "0006_mushy_valeria_richards",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1780742330389,
+      "tag": "0007_clever_crystal",
+      "breakpoints": true
     }
   ]
 }

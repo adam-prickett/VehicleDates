@@ -51,7 +51,7 @@ export const api = {
   },
   settings: {
     getDvlaKey: () =>
-      request<{ isSet: boolean; hint: string | null; source: "database" | "environment" | null }>(
+      request<{ isSet: boolean; source: "database" | "environment" | null }>(
         "/settings/dvla-key"
       ),
     saveDvlaKey: (apiKey: string) =>

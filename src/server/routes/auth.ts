@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { db } from "../db/client.js";
@@ -44,11 +44,16 @@ export const authRouter = new Hono()
     const [user] = await db
       .insert(users)
       .values({ username, passwordHash, role: "admin", createdAt: now, updatedAt: now })
-      .returning({ id: users.id, username: users.username, role: users.role });
+      .returning({ id: users.id, username: users.username, role: users.role, tokenVersion: users.tokenVersion });
 
-    const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    const token = await signToken({
+      sub: String(user.id),
+      username: user.username,
+      role: user.role,
+      ver: user.tokenVersion,
+    });
     setCookie(c, "auth_token", token, COOKIE_OPTS);
-    return c.json(user, 201);
+    return c.json({ id: user.id, username: user.username, role: user.role }, 201);
   })
 
   .post("/login", zValidator("json", loginSchema), async (c) => {
@@ -60,12 +65,29 @@ export const authRouter = new Hono()
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return c.json({ error: "Invalid username or password" }, 401);
 
-    const token = await signToken({ sub: String(user.id), username: user.username, role: user.role });
+    const token = await signToken({
+      sub: String(user.id),
+      username: user.username,
+      role: user.role,
+      ver: user.tokenVersion,
+    });
     setCookie(c, "auth_token", token, COOKIE_OPTS);
     return c.json({ id: user.id, username: user.username, role: user.role });
   })
 
-  .post("/logout", (c) => {
+  .post("/logout", async (c) => {
+    const token = getCookie(c, "auth_token");
+    if (token) {
+      const payload = await verifyToken(token);
+      const id = payload ? Number(payload.sub) : NaN;
+      if (Number.isInteger(id) && id > 0) {
+        const now = new Date().toISOString();
+        await db
+          .update(users)
+          .set({ tokenVersion: sql`${users.tokenVersion} + 1`, updatedAt: now })
+          .where(eq(users.id, id));
+      }
+    }
     deleteCookie(c, "auth_token", { path: "/" });
     return c.json({ success: true });
   })
@@ -77,12 +99,25 @@ export const authRouter = new Hono()
     const payload = await verifyToken(token);
     if (!payload) return c.json({ error: "Unauthorized" }, 401);
 
+    const id = Number(payload.sub);
+    if (!Number.isInteger(id) || id <= 0) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
     const [user] = await db
-      .select({ id: users.id, username: users.username, role: users.role })
+      .select({
+        id: users.id,
+        username: users.username,
+        role: users.role,
+        tokenVersion: users.tokenVersion,
+      })
       .from(users)
-      .where(eq(users.id, parseInt(payload.sub)))
+      .where(eq(users.id, id))
       .limit(1);
 
     if (!user) return c.json({ error: "Unauthorized" }, 401);
-    return c.json(user);
+    if ((payload.ver ?? 0) !== user.tokenVersion) {
+      return c.json({ error: "Session expired" }, 401);
+    }
+    return c.json({ id: user.id, username: user.username, role: user.role });
   });

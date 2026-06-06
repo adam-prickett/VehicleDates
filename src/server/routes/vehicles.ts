@@ -435,7 +435,15 @@ export const vehiclesRouter = new Hono()
 
     const buffer = await fs.promises.readFile(absolutePath);
     const filename = vehicle.insuranceCertificateOriginalName ?? vehicle.insuranceCertificateFilename;
-    const safeFilename = filename.replace(/[\r\n"]/g, "");
+
+    // RFC 6266: ASCII-only quoted fallback (with backslash + CR/LF + quote
+    // stripped, then quotes/backslashes escaped) plus filename*=UTF-8'' for
+    // clients that support it.
+    const asciiFallback = filename
+      .replace(/[\r\n]/g, "")
+      .replace(/[^\x20-\x7E]/g, "_")
+      .replace(/(["\\])/g, "\\$1");
+    const utf8Encoded = encodeURIComponent(filename).replace(/['()]/g, escape);
 
     c.header(
       "Content-Type",
@@ -443,7 +451,7 @@ export const vehiclesRouter = new Hono()
     );
     c.header(
       "Content-Disposition",
-      `attachment; filename="${safeFilename}"`
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${utf8Encoded}`
     );
     return c.body(buffer as unknown as ArrayBuffer);
   })

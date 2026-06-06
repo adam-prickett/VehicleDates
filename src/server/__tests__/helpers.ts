@@ -7,7 +7,8 @@ import { authRouter } from "../routes/auth.js";
 import { vehiclesRouter } from "../routes/vehicles.js";
 import { usersRouter } from "../routes/users.js";
 import { settingsRouter } from "../routes/settings.js";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
+import { requireSameOrigin } from "../middleware/sameOrigin.js";
 
 export function createTestDb() {
   const sqlite = new Database(":memory:");
@@ -21,10 +22,11 @@ export type TestDb = ReturnType<typeof createTestDb>;
 /** Build a Hono app wiring up all routers — uses whatever db is mocked at call time. */
 export function makeApp() {
   const app = new Hono();
+  app.use("*", requireSameOrigin);
   app.route("/auth", authRouter);
   app.use("/vehicles/*", requireAuth);
   app.use("/users/*", requireAuth);
-  app.use("/settings/*", requireAuth);
+  app.use("/settings/*", requireAuth, requireAdmin);
   app.route("/vehicles", vehiclesRouter);
   app.route("/users", usersRouter);
   app.route("/settings", settingsRouter);
@@ -38,12 +40,15 @@ export function extractCookie(res: Response): string {
   return match ? `auth_token=${match[1]}` : "";
 }
 
+const SAME_ORIGIN = "http://localhost";
+
 /** POST JSON to a Hono app.request path. */
 export function post(app: Hono, path: string, body: unknown, cookie = "") {
   return app.request(path, {
     method: "POST",
     headers: {
       "content-type": "application/json",
+      origin: SAME_ORIGIN,
       ...(cookie ? { cookie } : {}),
     },
     body: JSON.stringify(body),
@@ -61,7 +66,10 @@ export function get(app: Hono, path: string, cookie = "") {
 export function del(app: Hono, path: string, cookie = "") {
   return app.request(path, {
     method: "DELETE",
-    headers: cookie ? { cookie } : {},
+    headers: {
+      origin: SAME_ORIGIN,
+      ...(cookie ? { cookie } : {}),
+    },
   });
 }
 
@@ -71,6 +79,7 @@ export function put(app: Hono, path: string, body: unknown, cookie = "") {
     method: "PUT",
     headers: {
       "content-type": "application/json",
+      origin: SAME_ORIGIN,
       ...(cookie ? { cookie } : {}),
     },
     body: JSON.stringify(body),

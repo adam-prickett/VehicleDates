@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { db } from "../db/client.js";
 import { users } from "../db/schema.js";
@@ -70,7 +70,11 @@ export const usersRouter = new Hono()
 
     const [updated] = await db
       .update(users)
-      .set({ passwordHash, updatedAt: now })
+      .set({
+        passwordHash,
+        tokenVersion: sql`${users.tokenVersion} + 1`,
+        updatedAt: now,
+      })
       .where(eq(users.id, targetId))
       .returning(USER_COLS);
 
