@@ -17,4 +17,19 @@
   body {
     @apply bg-gray-50 text-gray-900 antialiased dark:bg-gray-900 dark:text-gray-100;
   }
+
+  /*
+   * iOS Safari gives input[type="date"|"time"|"datetime-local"] an intrinsic
+   * min-width based on its native picker chrome, which makes them overflow
+   * narrow containers (e.g. cards/forms) even when width: 100% is set.
+   * Strip the native appearance and reset min-width so they respect the
+   * container.
+   */
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
 }

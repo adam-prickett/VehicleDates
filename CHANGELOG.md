@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] — 2026-06-06
+
+### Fixed
+
+- **Date inputs overflowed the form card on iOS Safari.** Native `input[type="date"]` has an intrinsic min-width based on its picker chrome that ignores `width: 100%`. Stripping `-webkit-appearance` and resetting `min-width` to `0` lets the input respect its container. Affects the service-record form, the vehicle edit form (insurance and next-service dates) and the archive sale-date field.
+
 ## [0.3.1] — 2026-06-06
 
 ### Security
@@ -87,6 +93,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Server-side admin password reset script
 - Dockerfile + docker-compose for self-hosting
 
+[0.3.2]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.1.4...v0.2.0
