@@ -5,6 +5,7 @@ import { useTheme } from "../hooks/useTheme.ts";
 import { useAuth } from "../context/AuthContext.tsx";
 import { api } from "../api.ts";
 import { DrivingAnimation } from "./DrivingAnimation.tsx";
+import { InstallPrompt } from "./InstallPrompt.tsx";
 
 export function Layout() {
   const location = useLocation();
@@ -157,6 +158,8 @@ export function Layout() {
       <main className={`flex-1 w-full px-4 py-6 mx-auto transition-[filter] duration-300 ${isListPage ? "max-w-full" : "max-w-2xl"} ${refreshAllMutation.isPending ? "blur-sm" : ""}`}>
         <Outlet />
       </main>
+
+      <InstallPrompt />
     </div>
   );
 }

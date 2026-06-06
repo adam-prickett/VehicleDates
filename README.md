@@ -16,6 +16,7 @@ A mobile-friendly web app for tracking important dates across all your vehicles 
 - **Vehicle archiving** — archive sold or scrapped vehicles, optionally recording sale date and buyer details
 - **User accounts** — username/password login with admin and standard roles; first-launch setup wizard creates the initial admin account
 - **Dark mode** — toggleable, with preference saved to `localStorage` and OS preference respected on first visit
+- **Installable (PWA)** — installs to your home screen with an offline-capable app shell; an in-app install banner prompts you on supported browsers, with Add to Home Screen instructions on iOS Safari
 - **Export / Import** — back up all vehicle data as JSON and restore it on any device
 - **Responsive** — works on mobile, tablet and desktop; grid layout on larger screens
 
@@ -188,6 +189,20 @@ Each record captures:
 Records are sorted newest-first and can be edited or deleted at any time. When a vehicle is permanently removed, its service history is removed with it (cascade delete).
 
 This is separate from the **Next Service** date shown in the dates grid, which tracks the upcoming service due date.
+
+---
+
+## Install as an App (PWA)
+
+Vehicle Dates is a Progressive Web App and can be installed to your phone, tablet or desktop for a faster, full-screen experience that looks and feels like a native app.
+
+- **Android / Chrome / Edge** — an "Install Vehicle Dates" banner appears in-app; tap **Install** to add it to your home screen. You can also use the browser menu's "Install app" option.
+- **iOS Safari** — programmatic installation isn't supported, so the in-app banner shows instructions instead: tap the **Share** icon, then **Add to Home Screen**.
+- **Desktop** — supported browsers show an install icon in the address bar.
+
+Once installed, the app runs in its own window without browser chrome and remains usable for navigation while offline (API requests still require a connection — your vehicle data isn't cached locally). Updates are picked up automatically on the next launch.
+
+The dismiss button hides the prompt for two weeks; it won't appear again until then (or until you clear site data).
 
 ---
 
