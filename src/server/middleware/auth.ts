@@ -11,6 +11,12 @@ export interface AuthUser {
   role: string;
 }
 
+declare module "hono" {
+  interface ContextVariableMap {
+    user: AuthUser;
+  }
+}
+
 export async function requireAuth(c: Context, next: Next) {
   const token = getCookie(c, "auth_token");
   if (!token) return c.json({ error: "Unauthorized" }, 401);

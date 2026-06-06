@@ -95,3 +95,57 @@ export const settings = sqliteTable("settings", {
     .notNull()
     .default(sql`(datetime('now'))`),
 });
+
+export const notificationChannels = sqliteTable("notification_channels", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // "ntfy" | "pushover" | ...
+  label: text("label").notNull(),
+  config: text("config").notNull(), // JSON, provider-specific
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  userId: integer("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(false),
+  // JSON int arrays — days before the event to send a notification
+  leadDaysTax: text("lead_days_tax").notNull().default("[30,7,0]"),
+  leadDaysMot: text("lead_days_mot").notNull().default("[30,7,0]"),
+  leadDaysInsurance: text("lead_days_insurance").notNull().default("[30,7,0]"),
+  leadDaysService: text("lead_days_service").notNull().default("[14,0]"),
+  sendHour: integer("send_hour").notNull().default(9), // 0-23 local
+  sendMinute: integer("send_minute").notNull().default(0), // 0-59 local
+  timezone: text("timezone").notNull().default("Europe/London"),
+  updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
+});
+
+export const notificationLog = sqliteTable("notification_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  vehicleId: integer("vehicle_id")
+    .notNull()
+    .references(() => vehicles.id, { onDelete: "cascade" }),
+  eventType: text("event_type", {
+    enum: ["tax", "mot", "insurance", "service"],
+  }).notNull(),
+  eventDate: text("event_date").notNull(),
+  leadDays: integer("lead_days").notNull(),
+  channelId: integer("channel_id")
+    .notNull()
+    .references(() => notificationChannels.id, { onDelete: "cascade" }),
+  sentAt: text("sent_at").notNull().default(sql`(datetime('now'))`),
+  status: text("status", { enum: ["sent", "failed"] }).notNull(),
+  error: text("error"),
+});
+
+export type NotificationChannel = typeof notificationChannels.$inferSelect;
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type NotificationLog = typeof notificationLog.$inferSelect;

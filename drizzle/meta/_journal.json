@@ -57,6 +57,13 @@
       "when": 1780742330389,
       "tag": "0007_clever_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1780767291956,
+      "tag": "0008_awesome_spirit",
+      "breakpoints": true
     }
   ]
 }

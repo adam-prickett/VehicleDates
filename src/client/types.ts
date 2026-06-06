@@ -62,3 +62,54 @@ export interface ServiceTask {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface NotificationProvider {
+  type: string;
+  label: string;
+}
+
+export interface NotificationChannel {
+  id: number;
+  type: string;
+  label: string;
+  enabled: boolean;
+  config: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationPreferences {
+  enabled: boolean;
+  leadDaysTax: number[];
+  leadDaysMot: number[];
+  leadDaysInsurance: number[];
+  leadDaysService: number[];
+  sendHour: number;
+  sendMinute: number;
+  timezone: string;
+  updatedAt: string;
+}
+
+export type NotificationEventType = "tax" | "mot" | "insurance" | "service";
+
+export interface NotificationLogEntry {
+  id: number;
+  userId: number;
+  vehicleId: number;
+  eventType: NotificationEventType;
+  eventDate: string;
+  leadDays: number;
+  channelId: number;
+  sentAt: string;
+  status: "sent" | "failed";
+  error: string | null;
+}
+
+export interface NotificationRunSummary {
+  userId: number;
+  attempted: number;
+  sent: number;
+  failed: number;
+  skipped: number;
+  errors: Array<{ vehicleId: number; eventType: NotificationEventType; channelId: number; message: string }>;
+}

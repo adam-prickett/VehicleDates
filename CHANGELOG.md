@@ -2,6 +2,35 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-06-07
+
+### Added
+
+- **Scheduled push notifications.** Configurable per-user reminders for Tax / MOT / Insurance / Service expiries, dispatched server-side hourly.
+  - **Pluggable provider system** under `src/server/notifications/providers/`. **ntfy** is the first implementation (works with `ntfy.sh` and self-hosted instances; supports auth tokens). New providers (Pushover, Twilio, webhook, etc.) drop in as a single file plus one registry line — see `BACKLOG.md` for tracked follow-ups.
+  - **Per-event lead-day thresholds** (`30 / 14 / 7 / 3 / 1 / Day of`) selectable independently for each event type via a chip UI. Each threshold fires at most once per `(vehicle, event, expiry-date, channel)` and the dedupe key includes the expiry date so renewing automatically resets the cycle.
+  - **Master enabled switch + send-at hour + timezone picker** (with browser-tz suggestion). Time-of-day matching is computed per-user in their configured IANA timezone.
+  - **Per-channel Test button**, label, enabled toggle, edit and delete actions under **Settings → Notification Channels**. Confirmation flow on delete; cascade-removes the channel's past activity log rows.
+  - **Notification Activity** panel — last 20 sends with status (✓/✗), vehicle, event, lead-day, channel and upstream error message on failure. Auto-refreshes every 30s. Red failure callout appears at the top when any of the recent attempts failed.
+  - **`POST /api/notifications/run-now`** — per-user manual trigger that bypasses the time-of-day check (useful right after configuring a channel).
+  - **Retry cap on failed sends.** After 3 consecutive failures for the same `(vehicle, event, expiry-date, lead-days, channel)` tuple the scheduler stops retrying until the underlying date changes — prevents a permanently broken channel from filling the log forever.
+  - **Click-action deep links.** Set `PUBLIC_BASE_URL` and outbound notifications carry a deep link to the vehicle (ntfy `Click` header). Omitted gracefully when the env var is unset.
+  - **Daily log pruning.** A 4am cron drops `notification_log` rows older than 180 days so the table doesn't grow unbounded.
+- **New tables and migration `0008_awesome_spirit.sql`:**
+  - `notification_channels` — per-user channel definitions, provider type + JSON config + enabled flag.
+  - `notification_preferences` — per-user master switch, JSON lead-day arrays, send hour/minute, IANA timezone.
+  - `notification_log` — every send and failure with timestamp, status, error and the full dedupe key.
+- **New env var:** `PUBLIC_BASE_URL` — base URL the scheduler uses to build deep links inside outbound notifications. Documented in `.env.example` and `docker-compose.yml`.
+- **`BACKLOG.md`** — new top-level file tracking application-wide follow-ups and known limitations. Replaces the (intermediate, never-shipped) `NOTIFICATIONS.md`.
+
+### Fixed
+
+- Long-standing TypeScript error on `src/client/pages/VehicleDetailPage.tsx:176` — the `api.vehicles.update` payload type now declares `make: string | null`, matching the server schema. The whole project now typechecks clean.
+
+### Tests
+
+- **66 new tests**, total **219/219** — compute lifecycle / dedupe / threshold selection / SORN + archive skip / calendar-day diff; ntfy URL + header + priority mapping + auth + ASCII coercion + error paths; every API endpoint (preferences upsert, channel CRUD with cross-user isolation, test endpoint with mocked fetch, log scoping, run-now); scheduler (timezone matching, per-channel dedupe, failure persistence, retry cap and cap-reset-on-renewal, click links with and without `PUBLIC_BASE_URL`, log pruning).
+
 ## [0.3.4] — 2026-06-06
 
 ### Changed
@@ -111,6 +140,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Server-side admin password reset script
 - Dockerfile + docker-compose for self-hosting
 
+[0.4.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.1...v0.3.2

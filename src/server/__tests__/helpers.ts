@@ -7,6 +7,7 @@ import { authRouter } from "../routes/auth.js";
 import { vehiclesRouter } from "../routes/vehicles.js";
 import { usersRouter } from "../routes/users.js";
 import { settingsRouter } from "../routes/settings.js";
+import { notificationsRouter } from "../routes/notifications.js";
 import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { requireSameOrigin } from "../middleware/sameOrigin.js";
 
@@ -27,9 +28,11 @@ export function makeApp() {
   app.use("/vehicles/*", requireAuth);
   app.use("/users/*", requireAuth);
   app.use("/settings/*", requireAuth, requireAdmin);
+  app.use("/notifications/*", requireAuth);
   app.route("/vehicles", vehiclesRouter);
   app.route("/users", usersRouter);
   app.route("/settings", settingsRouter);
+  app.route("/notifications", notificationsRouter);
   return app;
 }
 

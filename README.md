@@ -14,6 +14,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - **Date tracking** — track Tax, MOT, Insurance and Service dates with tap-to-edit calendar pickers
 - **Service history** — record individual service jobs against a vehicle (full service, oil change, brake pads, tyres, etc.) with date, mileage, cost and notes
 - **Insurance policy details** — record policy number/reference and annual premium alongside the existing provider and expiry date, and upload the certificate (PDF, JPEG, PNG or HEIC) for safekeeping
+- **Scheduled push notifications** — opt in to receive reminders before Tax, MOT, Insurance and Service dates expire, dispatched to one or more channels of your choice. **ntfy** is wired up out of the box; the provider system is extensible for Pushover, Twilio, etc.
 - **Dashboard alerts** — colour-coded notifications at the top of the dashboard for any dates expiring within 30 days or already overdue
 - **SORN support** — mark vehicles as SORN; Tax alerts are suppressed and the Tax badge shows SORN status
 - **Vehicle archiving** — archive sold or scrapped vehicles, optionally recording sale date and buyer details
@@ -120,6 +121,7 @@ Set `DVLA_API_KEY` in your `.env` file (local dev) or in `docker-compose.yml`. T
 | `DATABASE_URL` | `./vehicles.db` | Path to the SQLite database file |
 | `UPLOADS_DIR` | `./uploads` | Directory where uploaded files (e.g. insurance certificates) are stored — must be writable and should be on a persistent volume in production |
 | `ALLOWED_ORIGINS` | _(derived from `Host`)_ | Comma-separated list of origins permitted to make state-changing API requests. Defaults to the request's own host. Set explicitly when behind a reverse proxy that doesn't forward `X-Forwarded-Host` |
+| `PUBLIC_BASE_URL` | _(none)_ | Public base URL of the app. Used to construct deep links in outbound notifications (e.g. ntfy `Click` header). If unset, notifications won't include a click target. Example: `https://vehicles.example.com` |
 | `PORT` | `3001` | Port the server listens on |
 | `NODE_ENV` | _(none)_ | Set to `production` to enable static file serving from `dist/` |
 
@@ -231,6 +233,36 @@ Each vehicle's Insurance section captures:
 **Allowed file types:** PDF, JPEG, PNG, HEIC/HEIF. **Max size:** 10 MB. Uploading a new certificate replaces the previous one (the old file is removed from disk). Removing a vehicle also removes its certificate file.
 
 Files are written to the directory pointed to by the `UPLOADS_DIR` environment variable (default `./uploads`). In Docker this defaults to `/data/uploads` and lives on the same persistent volume as the database, so your uploads survive container rebuilds.
+
+---
+
+## Notifications
+
+Vehicle Dates can send reminders before any Tax, MOT, Insurance or Service date expires. Notifications are per-user (so each household member can route their own alerts wherever they like) and dispatched server-side by an hourly cron, so the app doesn't need to be open.
+
+### How it works
+
+1. Configure one or more **channels** under **Settings → Notification Channels** (Add channel → pick a provider, fill in the connection details, save).
+2. Configure your **timing** under **Settings → Notifications**:
+    - **Master enabled** switch (required for anything to send).
+    - **Send at** hour and **Timezone** — picks when the daily check fires in your local time.
+    - **Reminder thresholds** per event type (Tax / MOT / Insurance / Service) — pick from `30 days`, `14 days`, `7 days`, `3 days`, `1 day`, `Day of`. Each threshold fires once per vehicle/event/date.
+3. Use the **Test** button on each channel to verify your credentials before relying on the schedule.
+4. **Notification Activity** below the channels shows the most recent sends and any failures, including the upstream error message.
+
+### Supported providers
+
+| Provider | Type | Notes |
+|---|---|---|
+| **ntfy** | Push to your phone via [ntfy.sh](https://ntfy.sh) or any self-hosted ntfy server. | Topic + optional auth token. |
+
+Adding a new provider is a single file under `src/server/notifications/providers/` plus one line in `providers/index.ts`. Tracked extensions: Pushover, Twilio (SMS), generic webhook. See [BACKLOG.md](BACKLOG.md) for the full backlog.
+
+### Scheduling details
+
+- The check runs hourly at `:00` server-time and dispatches for every user whose local hour (computed in their configured timezone) matches their configured **Send at** hour.
+- Dedupe is per `(vehicle, event, expiry-date, lead-days, channel)`. Renewing the date (e.g. paying tax) automatically resets the cycle for the next renewal.
+- Failed sends are retried on subsequent runs and recorded in the activity log with the upstream error message. After 3 consecutive failures for the same alert the scheduler stops retrying until the underlying expiry date changes — see [BACKLOG.md](BACKLOG.md) for tracked follow-ups.
 
 ---
 

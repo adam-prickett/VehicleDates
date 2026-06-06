@@ -1,4 +1,39 @@
-import type { Vehicle, AuthUser, User, ServiceTask } from "./types.ts";
+import type {
+  Vehicle,
+  AuthUser,
+  User,
+  ServiceTask,
+  NotificationProvider,
+  NotificationChannel,
+  NotificationPreferences,
+  NotificationLogEntry,
+  NotificationRunSummary,
+} from "./types.ts";
+
+interface ChannelInput {
+  type: string;
+  label: string;
+  config: Record<string, unknown>;
+  enabled?: boolean;
+}
+
+interface ChannelUpdate {
+  type?: string;
+  label?: string;
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+}
+
+interface PreferencesInput {
+  enabled: boolean;
+  leadDaysTax: number[];
+  leadDaysMot: number[];
+  leadDaysInsurance: number[];
+  leadDaysService: number[];
+  sendHour: number;
+  sendMinute: number;
+  timezone: string;
+}
 
 interface ServiceTaskInput {
   type: string;
@@ -86,6 +121,7 @@ export const api = {
       id: number,
       data: Partial<{
         v5DocumentNumber: string | null;
+        make: string | null;
         model: string | null;
         notes: string | null;
         colour: string | null;
@@ -150,6 +186,43 @@ export const api = {
     deleteCertificate: (vehicleId: number) =>
       request<Vehicle>(`/vehicles/${vehicleId}/insurance-certificate`, {
         method: "DELETE",
+      }),
+  },
+  notifications: {
+    listProviders: () => request<NotificationProvider[]>("/notifications/providers"),
+    getPreferences: () => request<NotificationPreferences>("/notifications/preferences"),
+    savePreferences: (data: PreferencesInput) =>
+      request<NotificationPreferences>("/notifications/preferences", {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    listChannels: () => request<NotificationChannel[]>("/notifications/channels"),
+    createChannel: (data: ChannelInput) =>
+      request<NotificationChannel>("/notifications/channels", {
+        method: "POST",
+        body: JSON.stringify(data),
+      }),
+    updateChannel: (id: number, data: ChannelUpdate) =>
+      request<NotificationChannel>(`/notifications/channels/${id}`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
+    deleteChannel: (id: number) =>
+      request<{ success: boolean }>(`/notifications/channels/${id}`, {
+        method: "DELETE",
+      }),
+    testChannel: (id: number) =>
+      request<{ success: boolean; error?: string }>(
+        `/notifications/channels/${id}/test`,
+        { method: "POST" }
+      ),
+    listLog: (limit?: number) =>
+      request<NotificationLogEntry[]>(
+        `/notifications/log${limit ? `?limit=${limit}` : ""}`
+      ),
+    runNow: () =>
+      request<NotificationRunSummary>("/notifications/run-now", {
+        method: "POST",
       }),
   },
   serviceTasks: {

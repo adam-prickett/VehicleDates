@@ -13,7 +13,9 @@ import { vehiclesRouter } from "./routes/vehicles.js";
 import { settingsRouter } from "./routes/settings.js";
 import { authRouter } from "./routes/auth.js";
 import { usersRouter } from "./routes/users.js";
+import { notificationsRouter } from "./routes/notifications.js";
 import { startScheduledRefresh } from "./jobs/dvlaRefresh.js";
+import { startNotificationScheduler } from "./jobs/notifications.js";
 import { requireAuth, requireAdmin } from "./middleware/auth.js";
 import { requireSameOrigin } from "./middleware/sameOrigin.js";
 
@@ -51,10 +53,12 @@ app.route("/api/auth", authRouter);
 app.use("/api/vehicles/*", requireAuth);
 app.use("/api/settings/*", requireAuth, requireAdmin);
 app.use("/api/users/*", requireAuth);
+app.use("/api/notifications/*", requireAuth);
 
 app.route("/api/vehicles", vehiclesRouter);
 app.route("/api/settings", settingsRouter);
 app.route("/api/users", usersRouter);
+app.route("/api/notifications", notificationsRouter);
 
 // Health check
 app.get("/api/health", (c) => c.json({ status: "ok" }));
@@ -83,6 +87,7 @@ const PORT = parseInt(process.env.PORT ?? "3001");
 
 runMigrations();
 startScheduledRefresh();
+startNotificationScheduler();
 
 serve({ fetch: app.fetch, port: PORT }, () => {
   console.log(`Server running on http://localhost:${PORT}`);

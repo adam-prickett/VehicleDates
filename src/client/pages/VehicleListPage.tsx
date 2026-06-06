@@ -1,19 +1,47 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { differenceInDays, parseISO, isValid } from "date-fns";
 import { api } from "../api.ts";
 import { VehicleCard } from "../components/VehicleCard.tsx";
+import { useAlertsEnabled } from "../hooks/useAlertsEnabled.ts";
 import type { Vehicle } from "../types.ts";
 
 const WARN_DAYS = 30;
 const CRITICAL_DAYS = 7;
+const DISMISSED_STORAGE_KEY = "dismissed-alerts";
 
 interface Alert {
   vehicleId: number;
   reg: string;
   label: string;
+  date: string; // the underlying expiry date — used to invalidate dismissals when it changes
   days: number; // negative = overdue
+}
+
+function alertKey(a: Pick<Alert, "vehicleId" | "label" | "date">): string {
+  return `${a.vehicleId}|${a.label}|${a.date}`;
+}
+
+function loadDismissed(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = window.localStorage.getItem(DISMISSED_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.filter((x) => typeof x === "string") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDismissed(s: Set<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DISMISSED_STORAGE_KEY, JSON.stringify([...s]));
+  } catch {
+    // Storage full or unavailable — silently ignore
+  }
 }
 
 const DATE_FIELDS: { key: keyof Vehicle; label: string; skipIfSorn?: boolean }[] = [
@@ -40,7 +68,7 @@ function getAlerts(vehicles: Vehicle[]): Alert[] {
         if (!isValid(d)) continue;
         const days = differenceInDays(d, new Date());
         if (days <= WARN_DAYS) {
-          alerts.push({ vehicleId: v.id, reg: v.registrationNumber, label, days });
+          alerts.push({ vehicleId: v.id, reg: v.registrationNumber, label, date, days });
         }
       } catch {}
     }
@@ -50,17 +78,58 @@ function getAlerts(vehicles: Vehicle[]): Alert[] {
 }
 
 function AlertBanner({ alerts }: { alerts: Alert[] }) {
-  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
+  const { enabled } = useAlertsEnabled();
+  const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
 
-  const visible = alerts.filter((a) => !dismissed.has(`${a.vehicleId}-${a.label}`));
-  if (visible.length === 0) return null;
+  // Prune stale entries (alerts that no longer exist — date renewed, vehicle
+  // archived, etc.) and persist the trimmed list. Runs whenever alerts change.
+  useEffect(() => {
+    const active = new Set(alerts.map(alertKey));
+    let changed = false;
+    for (const k of dismissed) {
+      if (!active.has(k)) {
+        changed = true;
+        break;
+      }
+    }
+    if (changed) {
+      const next = new Set([...dismissed].filter((k) => active.has(k)));
+      setDismissed(next);
+      saveDismissed(next);
+    }
+  }, [alerts, dismissed]);
+
+  const visible = alerts.filter((a) => !dismissed.has(alertKey(a)));
+  const hiddenCount = alerts.length - visible.length;
 
   function dismiss(a: Alert) {
-    setDismissed((prev) => new Set(prev).add(`${a.vehicleId}-${a.label}`));
+    setDismissed((prev) => {
+      const next = new Set(prev).add(alertKey(a));
+      saveDismissed(next);
+      return next;
+    });
   }
+
+  function restoreAll() {
+    setDismissed(new Set());
+    saveDismissed(new Set());
+  }
+
+  if (!enabled) return null;
+  if (visible.length === 0 && hiddenCount === 0) return null;
 
   return (
     <div className="space-y-2 mb-5">
+      {visible.length === 0 && hiddenCount > 0 && (
+        <div className="text-center">
+          <button
+            onClick={restoreAll}
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+          >
+            {hiddenCount} dismissed alert{hiddenCount !== 1 ? "s" : ""} — restore
+          </button>
+        </div>
+      )}
       {visible.map((a) => {
         const overdue = a.days < 0;
         const critical = a.days >= 0 && a.days <= CRITICAL_DAYS;
@@ -119,6 +188,16 @@ function AlertBanner({ alerts }: { alerts: Alert[] }) {
           </Link>
         );
       })}
+      {visible.length > 0 && hiddenCount > 0 && (
+        <div className="text-center pt-1">
+          <button
+            onClick={restoreAll}
+            className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors cursor-pointer"
+          >
+            + {hiddenCount} dismissed — restore
+          </button>
+        </div>
+      )}
     </div>
   );
 }
