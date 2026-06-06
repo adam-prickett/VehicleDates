@@ -25,6 +25,13 @@ export const vehicles = sqliteTable("vehicles", {
   // User-managed dates
   insuranceExpiryDate: text("insurance_expiry_date"),
   insuranceProvider: text("insurance_provider"),
+  insurancePolicyNumber: text("insurance_policy_number"),
+  insurancePremium: integer("insurance_premium"),
+  insuranceCertificateFilename: text("insurance_certificate_filename"),
+  insuranceCertificateOriginalName: text("insurance_certificate_original_name"),
+  insuranceCertificateMimeType: text("insurance_certificate_mime_type"),
+  insuranceCertificateSize: integer("insurance_certificate_size"),
+  insuranceCertificateUploadedAt: text("insurance_certificate_uploaded_at"),
   serviceDate: text("service_date"),
   serviceIntervalMonths: integer("service_interval_months"),
   // SORN status (manual override; DVLA taxStatus "SORN" is also respected)

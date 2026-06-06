@@ -31,6 +31,13 @@ export interface Vehicle {
   motExpiryDate: string | null;
   insuranceExpiryDate: string | null;
   insuranceProvider: string | null;
+  insurancePolicyNumber: string | null;
+  insurancePremium: number | null;
+  insuranceCertificateFilename: string | null;
+  insuranceCertificateOriginalName: string | null;
+  insuranceCertificateMimeType: string | null;
+  insuranceCertificateSize: number | null;
+  insuranceCertificateUploadedAt: string | null;
   serviceDate: string | null;
   serviceIntervalMonths: number | null;
   manualSorn: boolean | null;

@@ -7,6 +7,7 @@ import { DatePickerModal } from "../components/DatePickerModal.tsx";
 import { RegistrationPlate } from "../components/RegistrationPlate.tsx";
 import { DrivingAnimation } from "../components/DrivingAnimation.tsx";
 import { ServiceTasksSection } from "../components/ServiceTasksSection.tsx";
+import { InsuranceCertificate } from "../components/InsuranceCertificate.tsx";
 import type { Vehicle } from "../types.ts";
 
 type DateField = "taxDueDate" | "motExpiryDate" | "insuranceExpiryDate" | "serviceDate";
@@ -53,6 +54,8 @@ interface EditState {
   v5DocumentNumber: string;
   insuranceExpiryDate: string;
   insuranceProvider: string;
+  insurancePolicyNumber: string;
+  insurancePremium: string;
   serviceDate: string;
   serviceIntervalMonths: string;
   notes: string;
@@ -66,6 +69,8 @@ function toEditState(v: Vehicle): EditState {
     v5DocumentNumber: v.v5DocumentNumber ?? "",
     insuranceExpiryDate: v.insuranceExpiryDate ?? "",
     insuranceProvider: v.insuranceProvider ?? "",
+    insurancePolicyNumber: v.insurancePolicyNumber ?? "",
+    insurancePremium: v.insurancePremium != null ? (v.insurancePremium / 100).toFixed(2) : "",
     serviceDate: v.serviceDate ?? "",
     serviceIntervalMonths: v.serviceIntervalMonths?.toString() ?? "",
     notes: v.notes ?? "",
@@ -159,6 +164,14 @@ export function VehicleDetailPage() {
 
   function handleSave() {
     if (!editState) return;
+    const premiumPounds = editState.insurancePremium.trim()
+      ? parseFloat(editState.insurancePremium)
+      : null;
+    const premium =
+      premiumPounds != null && !isNaN(premiumPounds)
+        ? Math.round(premiumPounds * 100)
+        : null;
+
     updateMutation.mutate({
       make: editState.make || null,
       model: editState.model || null,
@@ -166,6 +179,8 @@ export function VehicleDetailPage() {
       v5DocumentNumber: editState.v5DocumentNumber || null,
       insuranceExpiryDate: editState.insuranceExpiryDate || null,
       insuranceProvider: editState.insuranceProvider || null,
+      insurancePolicyNumber: editState.insurancePolicyNumber || null,
+      insurancePremium: premium,
       serviceDate: editState.serviceDate || null,
       serviceIntervalMonths: editState.serviceIntervalMonths
         ? parseInt(editState.serviceIntervalMonths)
@@ -406,6 +421,14 @@ export function VehicleDetailPage() {
               <label className={labelCls}>Provider</label>
               <input type="text" value={editState.insuranceProvider} onChange={(e) => setEditState({ ...editState, insuranceProvider: e.target.value })} placeholder="e.g. Admiral, Direct Line" className={inputCls} />
             </div>
+            <div>
+              <label className={labelCls}>Policy Number / Reference</label>
+              <input type="text" value={editState.insurancePolicyNumber} onChange={(e) => setEditState({ ...editState, insurancePolicyNumber: e.target.value })} placeholder="e.g. ABC-12345678" className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>Annual Premium (£)</label>
+              <input type="number" inputMode="decimal" step="0.01" min={0} value={editState.insurancePremium} onChange={(e) => setEditState({ ...editState, insurancePremium: e.target.value })} placeholder="e.g. 480.00" className={inputCls} />
+            </div>
           </fieldset>
 
           <fieldset className="space-y-3">
@@ -458,6 +481,11 @@ export function VehicleDetailPage() {
             <InfoRow label="V5C Document Number" value={vehicle.v5DocumentNumber} />
             <InfoRow label="V5C Last Issued" value={vehicle.dateOfLastV5CIssued} />
             <InfoRow label="Insurance Provider" value={vehicle.insuranceProvider} />
+            <InfoRow label="Policy Number" value={vehicle.insurancePolicyNumber} />
+            <InfoRow
+              label="Annual Premium"
+              value={vehicle.insurancePremium != null ? `£${(vehicle.insurancePremium / 100).toFixed(2)}` : null}
+            />
             <InfoRow label="Service Interval" value={vehicle.serviceIntervalMonths ? `Every ${vehicle.serviceIntervalMonths} months` : null} />
             {vehicle.notes && (
               <div className="py-2">
@@ -472,6 +500,13 @@ export function VehicleDetailPage() {
               No details recorded yet. Tap Edit to add details.
             </p>
           )}
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+              Insurance Certificate
+            </p>
+            <InsuranceCertificate vehicle={vehicle} />
+          </div>
         </div>
       )}
 

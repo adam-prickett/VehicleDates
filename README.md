@@ -11,6 +11,7 @@ A mobile-friendly web app for tracking important dates across all your vehicles 
 - **Scheduled refresh** — DVLA data is updated nightly at 03:00 for all vehicles; a manual refresh button is available per vehicle and for all vehicles at once
 - **Date tracking** — track Tax, MOT, Insurance and Service dates with tap-to-edit calendar pickers
 - **Service history** — record individual service jobs against a vehicle (full service, oil change, brake pads, tyres, etc.) with date, mileage, cost and notes
+- **Insurance policy details** — record policy number/reference and annual premium alongside the existing provider and expiry date, and upload the certificate (PDF, JPEG, PNG or HEIC) for safekeeping
 - **Dashboard alerts** — colour-coded notifications at the top of the dashboard for any dates expiring within 30 days or already overdue
 - **SORN support** — mark vehicles as SORN; Tax alerts are suppressed and the Tax badge shows SORN status
 - **Vehicle archiving** — archive sold or scrapped vehicles, optionally recording sale date and buyer details
@@ -115,6 +116,7 @@ Set `DVLA_API_KEY` in your `.env` file (local dev) or in `docker-compose.yml`. T
 | `JWT_SECRET` | _(insecure default)_ | Secret used to sign session tokens — **must be set in production** |
 | `DVLA_API_KEY` | _(none)_ | DVLA Vehicle Enquiry Service API key (optional if set via Settings) |
 | `DATABASE_URL` | `./vehicles.db` | Path to the SQLite database file |
+| `UPLOADS_DIR` | `./uploads` | Directory where uploaded files (e.g. insurance certificates) are stored — must be writable and should be on a persistent volume in production |
 | `PORT` | `3001` | Port the server listens on |
 | `NODE_ENV` | _(none)_ | Set to `production` to enable static file serving from `dist/` |
 
@@ -189,6 +191,22 @@ Each record captures:
 Records are sorted newest-first and can be edited or deleted at any time. When a vehicle is permanently removed, its service history is removed with it (cascade delete).
 
 This is separate from the **Next Service** date shown in the dates grid, which tracks the upcoming service due date.
+
+---
+
+## Insurance Policy & Certificate
+
+Each vehicle's Insurance section captures:
+
+- **Provider** — e.g. Admiral, Direct Line
+- **Expiry date** — also surfaced on the dashboard alerts
+- **Policy number / reference** — free-text, up to 100 characters
+- **Annual premium** — entered in pounds and stored as integer pence
+- **Certificate file** — upload your insurance certificate or schedule for safekeeping; download it back at any time
+
+**Allowed file types:** PDF, JPEG, PNG, HEIC/HEIF. **Max size:** 10 MB. Uploading a new certificate replaces the previous one (the old file is removed from disk). Removing a vehicle also removes its certificate file.
+
+Files are written to the directory pointed to by the `UPLOADS_DIR` environment variable (default `./uploads`). In Docker this defaults to `/data/uploads` and lives on the same persistent volume as the database, so your uploads survive container rebuilds.
 
 ---
 

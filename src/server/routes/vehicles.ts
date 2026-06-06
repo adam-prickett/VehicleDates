@@ -2,10 +2,17 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { and, eq, isNull, isNotNull } from "drizzle-orm";
+import fs from "fs";
 import { db } from "../db/client.js";
 import { vehicles, serviceTasks } from "../db/schema.js";
 import { fetchDvlaVehicle, DvlaApiError } from "../services/dvla.js";
 import { refreshAllVehicles } from "../jobs/dvlaRefresh.js";
+import {
+  saveInsuranceCertificate,
+  resolveInsuranceCertificatePath,
+  deleteInsuranceCertificate,
+  UploadsError,
+} from "../lib/uploads.js";
 
 const UK_REG_PATTERN = /^[A-Z]{2}[0-9]{2}\s?[A-Z]{3}$|^[A-Z][0-9]{1,3}\s?[A-Z]{3}$|^[A-Z]{3}\s?[0-9]{1,3}[A-Z]$|^[A-Z]{1,2}[0-9]{1,4}$|^[0-9]{1,4}[A-Z]{1,2}$|^[A-Z]{1,3}[0-9]{1,3}$|^[0-9]{3}[A-Z]{1,3}$/i;
 
@@ -45,6 +52,8 @@ const updateVehicleSchema = z.object({
   colour: z.string().optional().nullable(),
   insuranceExpiryDate: z.string().optional().nullable(),
   insuranceProvider: z.string().optional().nullable(),
+  insurancePolicyNumber: z.string().max(100).optional().nullable(),
+  insurancePremium: z.number().int().nonnegative().optional().nullable(),
   serviceDate: z.string().optional().nullable(),
   serviceIntervalMonths: z.number().int().optional().nullable(),
   // Manual overrides for DVLA-sourced date fields
@@ -178,6 +187,9 @@ export const vehiclesRouter = new Hono()
       .returning();
 
     if (!deleted) return c.json({ error: "Not found" }, 404);
+
+    await deleteInsuranceCertificate(deleted.insuranceCertificateFilename);
+
     return c.json({ success: true });
   })
 
@@ -348,4 +360,120 @@ export const vehiclesRouter = new Hono()
 
     if (!deleted) return c.json({ error: "Not found" }, 404);
     return c.json({ success: true });
+  })
+
+  .post("/:id/insurance-certificate", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const [vehicle] = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, id))
+      .limit(1);
+    if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
+
+    let body: Record<string, string | File>;
+    try {
+      body = await c.req.parseBody();
+    } catch {
+      return c.json({ error: "Invalid multipart body" }, 400);
+    }
+    const file = body.file;
+    if (!file || typeof file === "string") {
+      return c.json({ error: "Missing file field" }, 400);
+    }
+
+    try {
+      const saved = await saveInsuranceCertificate(id, file);
+      const now = new Date().toISOString();
+
+      const [updated] = await db
+        .update(vehicles)
+        .set({
+          insuranceCertificateFilename: saved.filename,
+          insuranceCertificateOriginalName: saved.originalName,
+          insuranceCertificateMimeType: saved.mimeType,
+          insuranceCertificateSize: saved.size,
+          insuranceCertificateUploadedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(vehicles.id, id))
+        .returning();
+
+      await deleteInsuranceCertificate(vehicle.insuranceCertificateFilename);
+
+      return c.json(updated);
+    } catch (err) {
+      if (err instanceof UploadsError) {
+        return c.json({ error: err.message }, err.status);
+      }
+      throw err;
+    }
+  })
+
+  .get("/:id/insurance-certificate", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const [vehicle] = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, id))
+      .limit(1);
+    if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
+    if (!vehicle.insuranceCertificateFilename) {
+      return c.json({ error: "No certificate uploaded" }, 404);
+    }
+
+    const absolutePath = resolveInsuranceCertificatePath(
+      vehicle.insuranceCertificateFilename
+    );
+    if (!absolutePath) {
+      return c.json({ error: "Certificate file missing on server" }, 404);
+    }
+
+    const buffer = await fs.promises.readFile(absolutePath);
+    const filename = vehicle.insuranceCertificateOriginalName ?? vehicle.insuranceCertificateFilename;
+    const safeFilename = filename.replace(/[\r\n"]/g, "");
+
+    c.header(
+      "Content-Type",
+      vehicle.insuranceCertificateMimeType ?? "application/octet-stream"
+    );
+    c.header(
+      "Content-Disposition",
+      `attachment; filename="${safeFilename}"`
+    );
+    return c.body(buffer as unknown as ArrayBuffer);
+  })
+
+  .delete("/:id/insurance-certificate", async (c) => {
+    const id = parseInt(c.req.param("id"));
+    if (isNaN(id)) return c.json({ error: "Invalid ID" }, 400);
+
+    const [vehicle] = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, id))
+      .limit(1);
+    if (!vehicle) return c.json({ error: "Vehicle not found" }, 404);
+
+    await deleteInsuranceCertificate(vehicle.insuranceCertificateFilename);
+
+    const now = new Date().toISOString();
+    const [updated] = await db
+      .update(vehicles)
+      .set({
+        insuranceCertificateFilename: null,
+        insuranceCertificateOriginalName: null,
+        insuranceCertificateMimeType: null,
+        insuranceCertificateSize: null,
+        insuranceCertificateUploadedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(vehicles.id, id))
+      .returning();
+
+    return c.json(updated);
   });

@@ -91,6 +91,8 @@ export const api = {
         colour: string | null;
         insuranceExpiryDate: string | null;
         insuranceProvider: string | null;
+        insurancePolicyNumber: string | null;
+        insurancePremium: number | null;
         serviceDate: string | null;
         serviceIntervalMonths: number | null;
         taxDueDate: string | null;
@@ -124,6 +126,30 @@ export const api = {
     refreshAll: () =>
       request<{ success: number; failed: number }>("/vehicles/refresh-all", {
         method: "POST",
+      }),
+  },
+  insurance: {
+    certificateUrl: (vehicleId: number) =>
+      `${BASE}/vehicles/${vehicleId}/insurance-certificate`,
+    uploadCertificate: async (vehicleId: number, file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`${BASE}/vehicles/${vehicleId}/insurance-certificate`, {
+        method: "POST",
+        body: formData,
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          window.dispatchEvent(new Event("auth:unauthorized"));
+        }
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(body?.error ?? `Upload failed: ${res.status}`);
+      }
+      return res.json() as Promise<Vehicle>;
+    },
+    deleteCertificate: (vehicleId: number) =>
+      request<Vehicle>(`/vehicles/${vehicleId}/insurance-certificate`, {
+        method: "DELETE",
       }),
   },
   serviceTasks: {
