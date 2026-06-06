@@ -32,4 +32,18 @@
     appearance: none;
     min-width: 0;
   }
+
+  /*
+   * iOS Safari zooms the viewport into a focused form control whose font-size
+   * is below 16px. Force every form control to 16px on touch devices so the
+   * zoom never triggers, without affecting the smaller sizes we use for the
+   * desktop UI. !important is required to win over Tailwind's text-sm utility.
+   */
+  @media (hover: none) and (pointer: coarse) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }

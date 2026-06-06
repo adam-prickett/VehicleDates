@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
 import type { ServiceTask } from "../types.ts";
@@ -21,10 +21,171 @@ function formatCost(pence: number | null): string | null {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
+const SWIPE_OPEN_PX = 88;
+const SWIPE_COMMIT_PX = 40;
+
+interface RowProps {
+  task: ServiceTask;
+  isOpen: boolean;
+  isDeleting: boolean;
+  onOpen: () => void;
+  onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function SwipeableServiceRow({
+  task,
+  isOpen,
+  isDeleting,
+  onOpen,
+  onClose,
+  onEdit,
+  onDelete,
+}: RowProps) {
+  const [dragDelta, setDragDelta] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const direction = useRef<"horizontal" | "vertical" | null>(null);
+
+  // Snap closed if parent flips isOpen off
+  useEffect(() => {
+    if (!isOpen) setDragDelta(0);
+  }, [isOpen]);
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    startX.current = e.clientX;
+    startY.current = e.clientY;
+    direction.current = null;
+    setDragging(true);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging) return;
+    const dx = e.clientX - startX.current;
+    const dy = e.clientY - startY.current;
+
+    if (direction.current === null) {
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+      direction.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+      if (direction.current === "horizontal") {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } else {
+        // Vertical scroll wins — abort this gesture
+        setDragging(false);
+        return;
+      }
+    }
+
+    const base = isOpen ? -SWIPE_OPEN_PX : 0;
+    setDragDelta(Math.max(-SWIPE_OPEN_PX * 1.25, Math.min(0, base + dx)));
+  }
+
+  function handlePointerUp() {
+    if (!dragging) return;
+    setDragging(false);
+    if (direction.current === "horizontal") {
+      const shouldBeOpen = isOpen
+        ? dragDelta < -SWIPE_OPEN_PX + SWIPE_COMMIT_PX
+        : dragDelta < -SWIPE_COMMIT_PX;
+      if (shouldBeOpen) onOpen();
+      else onClose();
+    }
+    setDragDelta(0);
+    direction.current = null;
+  }
+
+  const offset = dragging ? dragDelta : isOpen ? -SWIPE_OPEN_PX : 0;
+
+  function handleRowClick() {
+    // Tapping the open row closes it without firing edit
+    if (isOpen) onClose();
+  }
+
+  return (
+    <li className="py-0 first:pt-0 last:pb-0" data-row-id={task.id}>
+      <div className="relative overflow-hidden" style={{ touchAction: "pan-y" }}>
+        {/* Delete action revealed behind the row */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          disabled={isDeleting}
+          aria-label="Delete service record"
+          className="absolute right-0 top-0 bottom-0 flex items-center justify-center font-semibold text-sm text-white bg-red-600 hover:bg-red-700 disabled:opacity-70 cursor-pointer"
+          style={{ width: SWIPE_OPEN_PX }}
+        >
+          {isDeleting ? (
+            <svg className="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="9" strokeWidth="2" strokeOpacity="0.3" />
+              <path strokeLinecap="round" strokeWidth="2" d="M21 12a9 9 0 00-9-9" />
+            </svg>
+          ) : (
+            "Delete"
+          )}
+        </button>
+
+        {/* Foreground row content */}
+        <div
+          className="relative bg-white dark:bg-gray-800 py-3 px-5"
+          style={{
+            transform: `translateX(${offset}px)`,
+            transition: dragging ? "none" : "transform 220ms cubic-bezier(0.32, 0.72, 0, 1)",
+          }}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onClick={handleRowClick}
+        >
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">
+                  {task.type}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                  {formatDate(task.date)}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                {task.mileage != null && <span>{task.mileage.toLocaleString()} mi</span>}
+                {task.cost != null && <span>{formatCost(task.cost)}</span>}
+              </div>
+              {task.notes && (
+                <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">
+                  {task.notes}
+                </p>
+              )}
+            </div>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              aria-label="Edit service record"
+              className="flex-shrink-0 p-1.5 -m-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="12" cy="5" r="1.6" />
+                <circle cx="12" cy="12" r="1.6" />
+                <circle cx="12" cy="19" r="1.6" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </li>
+  );
+}
+
 export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
   const queryClient = useQueryClient();
   const [target, setTarget] = useState<EditTarget>(null);
-  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [openRowId, setOpenRowId] = useState<number | null>(null);
 
   const queryKey = ["service-tasks", vehicleId];
 
@@ -56,7 +217,7 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
     mutationFn: (taskId: number) => api.serviceTasks.delete(vehicleId, taskId),
     onSuccess: () => {
       invalidate();
-      setDeleteId(null);
+      setOpenRowId(null);
     },
   });
 
@@ -67,6 +228,19 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
       createMutation.mutate(payload);
     }
   }
+
+  // Close any open swipe-row when the user taps outside it
+  useEffect(() => {
+    if (openRowId == null) return;
+    function onDocPointerDown(e: PointerEvent) {
+      const target = e.target as Element | null;
+      const row = target?.closest("[data-row-id]");
+      if (row?.getAttribute("data-row-id") === String(openRowId)) return;
+      setOpenRowId(null);
+    }
+    document.addEventListener("pointerdown", onDocPointerDown);
+    return () => document.removeEventListener("pointerdown", onDocPointerDown);
+  }, [openRowId]);
 
   const sorted = (tasks ?? [])
     .slice()
@@ -94,70 +268,18 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
           No service records yet. Tap Add to record one.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+        <ul className="divide-y divide-gray-100 dark:divide-gray-700 -mx-5">
           {sorted.map((task) => (
-            <li key={task.id} className="py-3 first:pt-0 last:pb-0">
-              {deleteId === task.id ? (
-                <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg p-3">
-                  <p className="text-red-800 dark:text-red-300 text-sm text-center mb-2">
-                    Delete this service record?
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setDeleteId(null)}
-                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-semibold py-1.5 rounded-lg text-xs cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => deleteMutation.mutate(task.id)}
-                      disabled={deleteMutation.isPending}
-                      className="flex-1 bg-red-600 text-white font-semibold py-1.5 rounded-lg text-xs hover:bg-red-700 disabled:opacity-50 cursor-pointer"
-                    >
-                      {deleteMutation.isPending ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">
-                        {task.type}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                        {formatDate(task.date)}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                      {task.mileage != null && (
-                        <span>{task.mileage.toLocaleString()} mi</span>
-                      )}
-                      {task.cost != null && <span>{formatCost(task.cost)}</span>}
-                    </div>
-                    {task.notes && (
-                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 whitespace-pre-wrap">
-                        {task.notes}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex flex-col gap-1 flex-shrink-0">
-                    <button
-                      onClick={() => setTarget(task)}
-                      className="text-blue-600 text-xs font-medium hover:text-blue-800 cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setDeleteId(task.id)}
-                      className="text-red-600 text-xs font-medium hover:text-red-800 cursor-pointer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              )}
-            </li>
+            <SwipeableServiceRow
+              key={task.id}
+              task={task}
+              isOpen={openRowId === task.id}
+              isDeleting={deleteMutation.isPending && deleteMutation.variables === task.id}
+              onOpen={() => setOpenRowId(task.id)}
+              onClose={() => setOpenRowId((prev) => (prev === task.id ? null : prev))}
+              onEdit={() => setTarget(task)}
+              onDelete={() => deleteMutation.mutate(task.id)}
+            />
           ))}
         </ul>
       )}

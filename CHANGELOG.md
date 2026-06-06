@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.4] — 2026-06-06
+
+### Changed
+
+- **Service-history rows are now swipe-to-delete on touch devices** (and pointer-drag on desktop). Swiping a row left reveals a red Delete action; tap to delete with no extra confirmation. Swiping right or tapping outside the row closes the swipe. Only one row can be open at a time. Uses the same iOS-style ease curve as the modal animations.
+- **Edit button replaced with a 3-dot (kebab) icon** on each service-history row — opens the edit modal exactly as before.
+
+### Fixed
+
+- **iOS Safari no longer zooms into a focused form field.** All inputs across the app now render at 16 px on touch devices (the threshold below which iOS Safari triggers its auto-zoom), without affecting the denser 14 px sizes used on desktop.
+
 ## [0.3.3] — 2026-06-06
 
 ### Changed
@@ -100,6 +111,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Server-side admin password reset script
 - Dockerfile + docker-compose for self-hosting
 
+[0.3.4]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.0...v0.3.1
