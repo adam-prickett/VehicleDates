@@ -75,10 +75,10 @@ export function DatePickerModal({
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-backdrop-in"
       onClick={handleBackdropClick}
     >
-      <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-modal-slide-up sm:animate-modal-fade-zoom origin-bottom sm:origin-center">
         {/* Header */}
         <div className="bg-blue-600 dark:bg-blue-700 text-white px-5 py-4">
           <div className="flex items-center justify-between mb-0.5">

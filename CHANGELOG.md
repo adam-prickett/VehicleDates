@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] — 2026-06-06
+
+### Changed
+
+- **Service history add/edit moved into a modal dialog** matching the date-picker pattern: full-screen blurred backdrop, bottom-sheet on mobile and centred card on desktop, click-outside and Esc to dismiss, body scroll locked while open.
+- **Both modals (service record + date picker) now animate in:** the backdrop fades opacity 0 → 1 while the blur grows 0 → 4px in sync; on mobile the panel slides up from below with an iOS-style ease, and on desktop it fades in with a subtle 96 % → 100 % scale.
+
 ## [0.3.2] — 2026-06-06
 
 ### Fixed
@@ -93,6 +100,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Server-side admin password reset script
 - Dockerfile + docker-compose for self-hosting
 
+[0.3.3]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.1...v0.3.2
 [0.3.1]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.2.0...v0.3.0

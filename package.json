@@ -1,12 +1,12 @@
 {
   "name": "vehicle-dates",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
-    "dev:client": "vite",
+    "dev:client": "vite --host",
     "build": "vite build",
     "start": "node dist-server/index.js",
     "start:prod": "tsx src/server/index.ts",
@@ -14,6 +14,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "reset-admin-password": "tsx src/server/scripts/resetAdminPassword.ts",
+    "seed": "tsx src/server/scripts/seed.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

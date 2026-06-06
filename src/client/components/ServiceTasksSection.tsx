@@ -2,58 +2,9 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
 import type { ServiceTask } from "../types.ts";
+import { ServiceTaskModal, type ServiceTaskPayload } from "./ServiceTaskModal.tsx";
 
-const SERVICE_TYPE_PRESETS = [
-  "Full Service",
-  "Interim Service",
-  "Oil Change",
-  "Brake Pads",
-  "Brake Discs",
-  "Tyres",
-  "Battery",
-  "Air Filter",
-  "Cabin Filter",
-  "Spark Plugs",
-  "Coolant Flush",
-  "Cambelt",
-  "Other",
-];
-
-const inputCls =
-  "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
-const labelCls = "block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1";
-
-interface FormState {
-  type: string;
-  customType: string;
-  date: string;
-  mileage: string;
-  cost: string;
-  notes: string;
-}
-
-function emptyForm(): FormState {
-  return {
-    type: SERVICE_TYPE_PRESETS[0],
-    customType: "",
-    date: new Date().toISOString().slice(0, 10),
-    mileage: "",
-    cost: "",
-    notes: "",
-  };
-}
-
-function taskToForm(task: ServiceTask): FormState {
-  const preset = SERVICE_TYPE_PRESETS.includes(task.type) ? task.type : "Other";
-  return {
-    type: preset,
-    customType: preset === "Other" ? task.type : "",
-    date: task.date,
-    mileage: task.mileage?.toString() ?? "",
-    cost: task.cost != null ? (task.cost / 100).toFixed(2) : "",
-    notes: task.notes ?? "",
-  };
-}
+type EditTarget = ServiceTask | "new" | null;
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -72,9 +23,7 @@ function formatCost(pence: number | null): string | null {
 
 export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
   const queryClient = useQueryClient();
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState<FormState>(emptyForm());
+  const [target, setTarget] = useState<EditTarget>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
 
   const queryKey = ["service-tasks", vehicleId];
@@ -87,20 +36,19 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
   const invalidate = () => queryClient.invalidateQueries({ queryKey });
 
   const createMutation = useMutation({
-    mutationFn: (data: Parameters<typeof api.serviceTasks.create>[1]) =>
-      api.serviceTasks.create(vehicleId, data),
+    mutationFn: (data: ServiceTaskPayload) => api.serviceTasks.create(vehicleId, data),
     onSuccess: () => {
       invalidate();
-      closeForm();
+      setTarget(null);
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ taskId, data }: { taskId: number; data: Parameters<typeof api.serviceTasks.update>[2] }) =>
+    mutationFn: ({ taskId, data }: { taskId: number; data: ServiceTaskPayload }) =>
       api.serviceTasks.update(vehicleId, taskId, data),
     onSuccess: () => {
       invalidate();
-      closeForm();
+      setTarget(null);
     },
   });
 
@@ -112,42 +60,9 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
     },
   });
 
-  function closeForm() {
-    setShowForm(false);
-    setEditingId(null);
-    setForm(emptyForm());
-  }
-
-  function startAdd() {
-    setEditingId(null);
-    setForm(emptyForm());
-    setShowForm(true);
-  }
-
-  function startEdit(task: ServiceTask) {
-    setEditingId(task.id);
-    setForm(taskToForm(task));
-    setShowForm(true);
-  }
-
-  function handleSubmit() {
-    const type = form.type === "Other" ? form.customType.trim() : form.type;
-    if (!type || !form.date) return;
-
-    const mileage = form.mileage.trim() ? parseInt(form.mileage) : null;
-    const costPounds = form.cost.trim() ? parseFloat(form.cost) : null;
-    const cost = costPounds != null && !isNaN(costPounds) ? Math.round(costPounds * 100) : null;
-
-    const payload = {
-      type,
-      date: form.date,
-      mileage: mileage != null && !isNaN(mileage) ? mileage : null,
-      cost,
-      notes: form.notes.trim() || null,
-    };
-
-    if (editingId != null) {
-      updateMutation.mutate({ taskId: editingId, data: payload });
+  function handleSave(payload: ServiceTaskPayload) {
+    if (target && target !== "new") {
+      updateMutation.mutate({ taskId: target.id, data: payload });
     } else {
       createMutation.mutate(payload);
     }
@@ -164,120 +79,20 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-semibold text-gray-800 dark:text-gray-100">Service History</h2>
-        {!showForm && (
-          <button
-            onClick={startAdd}
-            className="text-blue-600 text-sm font-medium hover:text-blue-800 cursor-pointer"
-          >
-            + Add
-          </button>
-        )}
+        <button
+          onClick={() => setTarget("new")}
+          className="text-blue-600 text-sm font-medium hover:text-blue-800 cursor-pointer"
+        >
+          + Add
+        </button>
       </div>
-
-      {showForm && (
-        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-3 mb-4 space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">
-            {editingId != null ? "Edit Service Record" : "New Service Record"}
-          </h3>
-          <div>
-            <label className={labelCls}>Type</label>
-            <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-              className={inputCls}
-            >
-              {SERVICE_TYPE_PRESETS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          {form.type === "Other" && (
-            <div>
-              <label className={labelCls}>Custom Type</label>
-              <input
-                type="text"
-                value={form.customType}
-                onChange={(e) => setForm({ ...form, customType: e.target.value })}
-                placeholder="e.g. Wiper Blades"
-                className={inputCls}
-              />
-            </div>
-          )}
-          <div>
-            <label className={labelCls}>Date</label>
-            <input
-              type="date"
-              value={form.date}
-              onChange={(e) => setForm({ ...form, date: e.target.value })}
-              className={inputCls}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>Mileage</label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={form.mileage}
-                onChange={(e) => setForm({ ...form, mileage: e.target.value })}
-                placeholder="e.g. 45000"
-                min={0}
-                className={inputCls}
-              />
-            </div>
-            <div>
-              <label className={labelCls}>Cost (£)</label>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.01"
-                value={form.cost}
-                onChange={(e) => setForm({ ...form, cost: e.target.value })}
-                placeholder="e.g. 199.99"
-                min={0}
-                className={inputCls}
-              />
-            </div>
-          </div>
-          <div>
-            <label className={labelCls}>Notes</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              rows={2}
-              placeholder="Garage, parts replaced, etc."
-              className={`${inputCls} resize-none`}
-            />
-          </div>
-          {error && (
-            <p className="text-red-600 dark:text-red-400 text-xs">{error.message}</p>
-          )}
-          <div className="flex gap-2">
-            <button
-              onClick={closeForm}
-              className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 font-semibold py-2 rounded-lg text-sm cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              disabled={mutating}
-              className="flex-1 bg-blue-600 text-white font-semibold py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-50 cursor-pointer"
-            >
-              {mutating ? "Saving..." : editingId != null ? "Update" : "Save"}
-            </button>
-          </div>
-        </div>
-      )}
 
       {isLoading ? (
         <p className="text-sm text-gray-400 dark:text-gray-500 italic">Loading…</p>
       ) : sorted.length === 0 ? (
-        !showForm && (
-          <p className="text-gray-400 dark:text-gray-500 text-sm italic text-center py-2">
-            No service records yet. Tap Add to record one.
-          </p>
-        )
+        <p className="text-gray-400 dark:text-gray-500 text-sm italic text-center py-2">
+          No service records yet. Tap Add to record one.
+        </p>
       ) : (
         <ul className="divide-y divide-gray-100 dark:divide-gray-700">
           {sorted.map((task) => (
@@ -328,7 +143,7 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
                   </div>
                   <div className="flex flex-col gap-1 flex-shrink-0">
                     <button
-                      onClick={() => startEdit(task)}
+                      onClick={() => setTarget(task)}
                       className="text-blue-600 text-xs font-medium hover:text-blue-800 cursor-pointer"
                     >
                       Edit
@@ -345,6 +160,16 @@ export function ServiceTasksSection({ vehicleId }: { vehicleId: number }) {
             </li>
           ))}
         </ul>
+      )}
+
+      {target && (
+        <ServiceTaskModal
+          task={target === "new" ? null : target}
+          onSave={handleSave}
+          onClose={() => setTarget(null)}
+          isSaving={mutating}
+          error={error?.message ?? null}
+        />
       )}
     </div>
   );
