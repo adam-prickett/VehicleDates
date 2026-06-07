@@ -41,6 +41,17 @@ interface PushoverErrorBody {
   message?: string;
 }
 
+interface PushoverSuccessBody {
+  status?: number;
+  /**
+   * Pushover sets `info` even on 200 responses when something noteworthy
+   * happened — most commonly "no active devices to send to" when the user
+   * key is valid but the account has no devices subscribed. We treat any
+   * `info` value as a failure so the user finds out.
+   */
+  info?: string;
+}
+
 export const pushoverProvider: ProviderDefinition<PushoverConfig> = {
   type: "pushover",
   label: "Pushover",
@@ -99,8 +110,9 @@ export const pushoverProvider: ProviderDefinition<PushoverConfig> = {
       body: params.toString(),
     });
 
+    const text = await res.text().catch(() => "");
+
     if (!res.ok) {
-      const text = await res.text().catch(() => "");
       let detail = "";
       if (text) {
         try {
@@ -117,6 +129,25 @@ export const pushoverProvider: ProviderDefinition<PushoverConfig> = {
         }
       }
       throw new Error(`Pushover returned ${res.status}${detail}`);
+    }
+
+    // 200 OK doesn't always mean "delivered". Pushover signals soft failures
+    // like "no active devices to send to" or "device not found" via an `info`
+    // field in the response body; treat any `info` value as a delivery
+    // failure so the caller (and the user via the activity log / test
+    // button) actually finds out.
+    if (text) {
+      try {
+        const body = JSON.parse(text) as PushoverSuccessBody;
+        if (body.info && body.info.trim().length > 0) {
+          throw new Error(`Pushover delivery warning: ${body.info}`);
+        }
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith("Pushover delivery warning:")) {
+          throw err;
+        }
+        // JSON parse failure on a 200 response is unusual but not actionable.
+      }
     }
   },
 };

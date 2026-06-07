@@ -1,10 +1,12 @@
 import type { FieldSpec, ProviderDefinition } from "../types.js";
 import { ntfyProvider } from "./ntfy.js";
 import { pushoverProvider } from "./pushover.js";
+import { discordProvider } from "./discord.js";
 
 const REGISTRY: Record<string, ProviderDefinition<unknown>> = {
   [ntfyProvider.type]: ntfyProvider as ProviderDefinition<unknown>,
   [pushoverProvider.type]: pushoverProvider as ProviderDefinition<unknown>,
+  [discordProvider.type]: discordProvider as ProviderDefinition<unknown>,
 };
 
 export interface ProviderInfo {
@@ -27,4 +29,4 @@ export function listProviders(): ProviderInfo[] {
   }));
 }
 
-export { ntfyProvider, pushoverProvider };
+export { ntfyProvider, pushoverProvider, discordProvider };

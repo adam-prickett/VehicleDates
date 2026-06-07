@@ -177,4 +177,42 @@ describe("pushoverProvider.send", () => {
       pushoverProvider.send(config, { title: "T", body: "B" })
     ).rejects.toThrow("ECONNRESET");
   });
+
+  it("treats a 200 response with an `info` field as a delivery failure", async () => {
+    // Pushover returns 200 + status:1 even when the user has no devices
+    // registered. The body's `info` field tells us; if we don't surface it
+    // the send silently no-ops.
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          status: 1,
+          info: "no active devices to send to",
+          request: "abc-123",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    await expect(
+      pushoverProvider.send(config, { title: "T", body: "B" })
+    ).rejects.toThrow(/Pushover delivery warning: no active devices to send to/);
+  });
+
+  it("succeeds when a 200 response has no `info` field", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ status: 1, request: "abc" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+    await expect(
+      pushoverProvider.send(config, { title: "T", body: "B" })
+    ).resolves.toBeUndefined();
+  });
+
+  it("succeeds when a 200 response body is empty / unparseable", async () => {
+    fetchMock.mockResolvedValue(new Response("", { status: 200 }));
+    await expect(
+      pushoverProvider.send(config, { title: "T", body: "B" })
+    ).resolves.toBeUndefined();
+  });
 });
