@@ -2,37 +2,7 @@ import { Link } from "react-router-dom";
 import type { Vehicle } from "../types.ts";
 import { DateBadge } from "./DateBadge.tsx";
 import { RegistrationPlate } from "./RegistrationPlate.tsx";
-import { differenceInDays, parseISO, isValid } from "date-fns";
-
-function isSorn(vehicle: Vehicle): boolean {
-  return !!(vehicle.manualSorn || vehicle.taxStatus?.toUpperCase() === "SORN");
-}
-
-function getOverallStatus(vehicle: Vehicle): "expired" | "warning" | "ok" | "unknown" {
-  const sorn = isSorn(vehicle);
-  const dates = [
-    { date: vehicle.taxDueDate, skip: sorn },
-    { date: vehicle.motExpiryDate, skip: false },
-    { date: vehicle.insuranceExpiryDate, skip: false },
-    { date: vehicle.serviceDate, skip: false },
-  ];
-
-  let hasWarning = false;
-  for (const { date, skip } of dates) {
-    if (!date || skip) continue;
-    try {
-      const parsed = parseISO(date);
-      if (!isValid(parsed)) continue;
-      const days = differenceInDays(parsed, new Date());
-      if (days < 0) return "expired";
-      if (days <= 30) hasWarning = true;
-    } catch {}
-  }
-
-  if (hasWarning) return "warning";
-  if (dates.some(({ date }) => date !== null)) return "ok";
-  return "unknown";
-}
+import { getOverallStatus, isSorn } from "../lib/vehicleStatus.ts";
 
 const statusBanner = {
   expired: "border-l-4 border-red-500",

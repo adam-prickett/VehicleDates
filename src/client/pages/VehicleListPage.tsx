@@ -4,7 +4,9 @@ import { Link } from "react-router-dom";
 import { differenceInDays, parseISO, isValid } from "date-fns";
 import { api } from "../api.ts";
 import { VehicleCard } from "../components/VehicleCard.tsx";
+import { VehicleRowCompact } from "../components/VehicleRowCompact.tsx";
 import { useAlertsEnabled } from "../hooks/useAlertsEnabled.ts";
+import { useCompactMode } from "../hooks/useCompactMode.ts";
 import type { Vehicle } from "../types.ts";
 
 const WARN_DAYS = 30;
@@ -204,6 +206,7 @@ function AlertBanner({ alerts }: { alerts: Alert[] }) {
 
 export function VehicleListPage() {
   const [showArchived, setShowArchived] = useState(false);
+  const { enabled: compact } = useCompactMode();
 
   const { data: vehicles, isLoading, error } = useQuery({
     queryKey: ["vehicles"],
@@ -284,11 +287,21 @@ export function VehicleListPage() {
         </h1>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sorted.map((vehicle) => (
-          <VehicleCard key={vehicle.id} vehicle={vehicle} />
-        ))}
-      </div>
+      {compact ? (
+        <ul className="bg-white dark:bg-gray-800 rounded-xl shadow-sm divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+          {sorted.map((vehicle) => (
+            <li key={vehicle.id}>
+              <VehicleRowCompact vehicle={vehicle} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sorted.map((vehicle) => (
+            <VehicleCard key={vehicle.id} vehicle={vehicle} />
+          ))}
+        </div>
+      )}
 
       {/* Archived section */}
       <div className="mt-8 border-t border-gray-100 dark:border-gray-800 pt-6">
@@ -311,6 +324,14 @@ export function VehicleListPage() {
           <div className="mt-4">
             {sortedArchived.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No archived vehicles</p>
+            ) : compact ? (
+              <ul className="bg-white dark:bg-gray-800 rounded-xl shadow-sm divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden">
+                {sortedArchived.map((vehicle) => (
+                  <li key={vehicle.id}>
+                    <VehicleRowCompact vehicle={vehicle} archived />
+                  </li>
+                ))}
+              </ul>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {sortedArchived.map((vehicle) => (

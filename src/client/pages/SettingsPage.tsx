@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
 import { useAlertsEnabled } from "../hooks/useAlertsEnabled.ts";
+import { useCompactMode } from "../hooks/useCompactMode.ts";
 import {
   NotificationChannelModal,
   type ChannelFormPayload,
@@ -256,6 +257,45 @@ function ImportSection() {
 }
 
 // --- Dashboard alerts ---
+
+function CompactModeSection() {
+  const { enabled, toggle } = useCompactMode();
+
+  return (
+    <Section
+      title="Compact Dashboard"
+      description="Render the dashboard as a single-column list with the registration on the left and a status icon on the right. Useful on small screens or when you only want an at-a-glance view."
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+            {enabled ? "Compact view enabled" : "Compact view disabled"}
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+            Preference is saved per device.
+          </p>
+        </div>
+        <button
+          onClick={toggle}
+          role="switch"
+          aria-checked={enabled}
+          aria-label="Toggle compact dashboard view"
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors cursor-pointer focus:outline-none ${
+            enabled
+              ? "bg-blue-600 border-blue-600"
+              : "bg-gray-200 dark:bg-gray-600 border-gray-200 dark:border-gray-600"
+          }`}
+        >
+          <span
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5 ${
+              enabled ? "translate-x-5" : "translate-x-0.5"
+            }`}
+          />
+        </button>
+      </div>
+    </Section>
+  );
+}
 
 function AlertsSection() {
   const { enabled, toggle } = useAlertsEnabled();
@@ -981,6 +1021,7 @@ export function SettingsPage() {
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Settings</h1>
       <AlertsSection />
+      <CompactModeSection />
       <NotificationPreferencesSection />
       <NotificationChannelsSection />
       <NotificationActivitySection />
