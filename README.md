@@ -255,6 +255,7 @@ Vehicle Dates can send reminders before any Tax, MOT, Insurance or Service date 
 | Provider | Type | Notes |
 |---|---|---|
 | **ntfy** | Push to your phone via [ntfy.sh](https://ntfy.sh) or any self-hosted ntfy server. | Topic + optional auth token. |
+| **Pushover** | Push to the [Pushover](https://pushover.net) mobile + desktop apps. | User key + per-app API token. Optional device-name targeting and custom sound. |
 
 Adding a new provider is a single file under `src/server/notifications/providers/` plus one line in `providers/index.ts`. Tracked extensions: Pushover, Twilio (SMS), generic webhook. See [BACKLOG.md](BACKLOG.md) for the full backlog.
 

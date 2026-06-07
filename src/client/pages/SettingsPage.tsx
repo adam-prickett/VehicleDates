@@ -6,7 +6,7 @@ import {
   NotificationChannelModal,
   type ChannelFormPayload,
 } from "../components/NotificationChannelModal.tsx";
-import type { NotificationChannel, NotificationPreferences } from "../types.ts";
+import type { NotificationChannel, NotificationPreferences, NotificationProvider } from "../types.ts";
 
 const inputCls =
   "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2.5 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm";
@@ -582,6 +582,28 @@ function NotificationPreferencesSection() {
 
 type ChannelEditTarget = NotificationChannel | "new" | null;
 
+/**
+ * Build a one-line summary of a channel's config using whichever non-secret,
+ * non-empty fields the provider declares. Hides obvious password fields and
+ * any field whose value is null/empty.
+ */
+function summarizeChannel(
+  channel: NotificationChannel,
+  providers: NotificationProvider[] | undefined
+): string {
+  const provider = providers?.find((p) => p.type === channel.type);
+  if (!provider) return "";
+  const cfg = channel.config as Record<string, unknown>;
+  const parts: string[] = [];
+  for (const field of provider.fields) {
+    if (field.type === "password") continue;
+    const raw = cfg[field.name];
+    if (typeof raw !== "string" || raw.trim().length === 0) continue;
+    parts.push(raw);
+  }
+  return parts.join(" · ");
+}
+
 function NotificationChannelsSection() {
   const queryClient = useQueryClient();
   const [target, setTarget] = useState<ChannelEditTarget>(null);
@@ -715,9 +737,9 @@ function NotificationChannelsSection() {
                           {channel.type}
                         </span>
                       </div>
-                      {channel.type === "ntfy" && (
+                      {summarizeChannel(channel, providers) && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
-                          {(cfg.server as string) ?? "https://ntfy.sh"} / {(cfg.topic as string) ?? ""}
+                          {summarizeChannel(channel, providers)}
                         </p>
                       )}
                       <div className="flex gap-3 mt-2">
@@ -785,7 +807,7 @@ function NotificationChannelsSection() {
       {target && (
         <NotificationChannelModal
           channel={target === "new" ? null : target}
-          providers={providers ?? [{ type: "ntfy", label: "ntfy" }]}
+          providers={providers ?? []}
           onSave={handleSave}
           onClose={() => setTarget(null)}
           isSaving={saving}

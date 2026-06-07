@@ -63,9 +63,23 @@ export interface ServiceTask {
   updatedAt: string;
 }
 
+export type NotificationFieldType = "text" | "password" | "url";
+
+export interface NotificationFieldSpec {
+  name: string;
+  label: string;
+  type: NotificationFieldType;
+  required?: boolean;
+  placeholder?: string;
+  help?: string;
+  defaultValue?: string;
+}
+
 export interface NotificationProvider {
   type: string;
   label: string;
+  description?: string;
+  fields: NotificationFieldSpec[];
 }
 
 export interface NotificationChannel {

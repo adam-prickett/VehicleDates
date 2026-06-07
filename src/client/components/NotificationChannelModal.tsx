@@ -1,5 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import type { NotificationChannel, NotificationProvider } from "../types.ts";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type {
+  NotificationChannel,
+  NotificationProvider,
+  NotificationFieldSpec,
+} from "../types.ts";
 
 const inputCls =
   "w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -21,37 +25,22 @@ interface Props {
   error?: string | null;
 }
 
-interface FormState {
-  type: string;
-  label: string;
-  enabled: boolean;
-  // ntfy-specific (the only provider for now)
-  ntfyServer: string;
-  ntfyTopic: string;
-  ntfyAuthToken: string;
-}
-
-function emptyForm(providers: NotificationProvider[]): FormState {
-  return {
-    type: providers[0]?.type ?? "ntfy",
-    label: "",
-    enabled: true,
-    ntfyServer: "https://ntfy.sh",
-    ntfyTopic: "",
-    ntfyAuthToken: "",
-  };
-}
-
-function channelToForm(c: NotificationChannel): FormState {
-  const cfg = c.config as Record<string, unknown>;
-  return {
-    type: c.type,
-    label: c.label,
-    enabled: c.enabled,
-    ntfyServer: (cfg.server as string) ?? "https://ntfy.sh",
-    ntfyTopic: (cfg.topic as string) ?? "",
-    ntfyAuthToken: (cfg.authToken as string) ?? "",
-  };
+function valuesFor(
+  provider: NotificationProvider,
+  channel: NotificationChannel | null
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const f of provider.fields) {
+    out[f.name] = f.defaultValue ?? "";
+  }
+  if (channel && channel.type === provider.type) {
+    const cfg = channel.config as Record<string, unknown>;
+    for (const f of provider.fields) {
+      const v = cfg[f.name];
+      if (typeof v === "string") out[f.name] = v;
+    }
+  }
+  return out;
 }
 
 export function NotificationChannelModal({
@@ -62,9 +51,31 @@ export function NotificationChannelModal({
   isSaving,
   error,
 }: Props) {
-  const [form, setForm] = useState<FormState>(() =>
-    channel ? channelToForm(channel) : emptyForm(providers)
+  const initialType = channel?.type ?? providers[0]?.type ?? "";
+  const [selectedType, setSelectedType] = useState(initialType);
+  const [label, setLabel] = useState(channel?.label ?? "");
+  const [enabled, setEnabled] = useState(channel?.enabled ?? true);
+
+  const selectedProvider = useMemo(
+    () => providers.find((p) => p.type === selectedType),
+    [providers, selectedType]
   );
+
+  const [values, setValues] = useState<Record<string, string>>(() =>
+    selectedProvider ? valuesFor(selectedProvider, channel) : {}
+  );
+
+  // When the user switches provider type on a new channel, reset values to
+  // the new provider's defaults.
+  const lastTypeRef = useRef(selectedType);
+  useEffect(() => {
+    if (lastTypeRef.current === selectedType) return;
+    lastTypeRef.current = selectedType;
+    if (selectedProvider) {
+      setValues(valuesFor(selectedProvider, channel));
+    }
+  }, [selectedType, selectedProvider, channel]);
+
   const backdropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -86,22 +97,27 @@ export function NotificationChannelModal({
     if (e.target === backdropRef.current) onClose();
   }
 
+  function isComplete(): boolean {
+    if (!label.trim()) return false;
+    if (!selectedProvider) return false;
+    for (const f of selectedProvider.fields) {
+      if (f.required && !values[f.name]?.trim()) return false;
+    }
+    return true;
+  }
+
   function handleSubmit() {
-    if (!form.label.trim()) return;
-    let config: Record<string, unknown> = {};
-    if (form.type === "ntfy") {
-      if (!form.ntfyTopic.trim()) return;
-      config = {
-        server: form.ntfyServer.trim() || "https://ntfy.sh",
-        topic: form.ntfyTopic.trim(),
-        authToken: form.ntfyAuthToken.trim() || null,
-      };
+    if (!selectedProvider || !isComplete()) return;
+    const config: Record<string, unknown> = {};
+    for (const f of selectedProvider.fields) {
+      const v = (values[f.name] ?? "").trim();
+      config[f.name] = v.length === 0 ? null : v;
     }
     onSave({
-      type: form.type,
-      label: form.label.trim(),
+      type: selectedProvider.type,
+      label: label.trim(),
       config,
-      enabled: form.enabled,
+      enabled,
     });
   }
 
@@ -134,8 +150,8 @@ export function NotificationChannelModal({
           <div>
             <label className={labelCls}>Provider</label>
             <select
-              value={form.type}
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
               disabled={isEditing}
               className={inputCls}
             >
@@ -150,78 +166,50 @@ export function NotificationChannelModal({
                 Provider type can't be changed after creation. Delete and re-add to switch.
               </p>
             )}
+            {!isEditing && selectedProvider?.description && (
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1.5">
+                {selectedProvider.description}
+              </p>
+            )}
           </div>
 
           <div>
             <label className={labelCls}>Label</label>
             <input
               type="text"
-              value={form.label}
-              onChange={(e) => setForm({ ...form, label: e.target.value })}
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
               placeholder="e.g. Home phone"
               className={inputCls}
             />
           </div>
 
-          {form.type === "ntfy" && (
-            <>
-              <div>
-                <label className={labelCls}>Server</label>
-                <input
-                  type="url"
-                  value={form.ntfyServer}
-                  onChange={(e) => setForm({ ...form, ntfyServer: e.target.value })}
-                  placeholder="https://ntfy.sh"
-                  className={inputCls}
-                />
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  Defaults to the public ntfy.sh. Use your own instance URL if self-hosted.
-                </p>
-              </div>
-              <div>
-                <label className={labelCls}>Topic</label>
-                <input
-                  type="text"
-                  value={form.ntfyTopic}
-                  onChange={(e) => setForm({ ...form, ntfyTopic: e.target.value })}
-                  placeholder="vehicle-alerts-abc123"
-                  className={inputCls}
-                />
-                <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
-                  Letters, numbers, _ and - only. Anyone with the topic name can read it on public servers — pick something unguessable.
-                </p>
-              </div>
-              <div>
-                <label className={labelCls}>Auth token (optional)</label>
-                <input
-                  type="password"
-                  value={form.ntfyAuthToken}
-                  onChange={(e) => setForm({ ...form, ntfyAuthToken: e.target.value })}
-                  placeholder="tk_… (only for protected servers)"
-                  className={inputCls}
-                  autoComplete="off"
-                />
-              </div>
-            </>
-          )}
+          {selectedProvider?.fields.map((f) => (
+            <ProviderField
+              key={f.name}
+              field={f}
+              value={values[f.name] ?? ""}
+              onChange={(v) => setValues((prev) => ({ ...prev, [f.name]: v }))}
+            />
+          ))}
 
           <div className="flex items-center justify-between gap-3 pt-1">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-200">
               Enabled
             </label>
             <button
-              onClick={() => setForm({ ...form, enabled: !form.enabled })}
+              onClick={() => setEnabled((v) => !v)}
               role="switch"
-              aria-checked={form.enabled}
+              aria-checked={enabled}
               className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 transition-colors cursor-pointer focus:outline-none ${
-                form.enabled
+                enabled
                   ? "bg-blue-600 border-blue-600"
                   : "bg-gray-200 dark:bg-gray-600 border-gray-200 dark:border-gray-600"
               }`}
             >
               <span
                 className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform mt-0.5 ${
-                  form.enabled ? "translate-x-5" : "translate-x-0.5"
+                  enabled ? "translate-x-5" : "translate-x-0.5"
                 }`}
               />
             </button>
@@ -241,13 +229,42 @@ export function NotificationChannelModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSaving}
+            disabled={isSaving || !isComplete()}
             className="px-5 py-2.5 text-sm font-semibold bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors cursor-pointer"
           >
             {isSaving ? "Saving…" : isEditing ? "Update" : "Save"}
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ProviderField({
+  field,
+  value,
+  onChange,
+}: {
+  field: NotificationFieldSpec;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label className={labelCls}>{field.label}</label>
+      <input
+        type={field.type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={field.placeholder ?? ""}
+        className={inputCls}
+        autoComplete={field.type === "password" ? "off" : undefined}
+      />
+      {field.help && (
+        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-1">
+          {field.help}
+        </p>
+      )}
     </div>
   );
 }

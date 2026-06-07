@@ -46,6 +46,32 @@ function asciiHeader(value: string): string {
 export const ntfyProvider: ProviderDefinition<NtfyConfig> = {
   type: "ntfy",
   label: "ntfy",
+  description:
+    "Push to your phone via ntfy.sh or any self-hosted ntfy server. Subscribe by topic name from the ntfy app.",
+  fields: [
+    {
+      name: "server",
+      label: "Server",
+      type: "url",
+      defaultValue: "https://ntfy.sh",
+      placeholder: "https://ntfy.sh",
+      help: "Defaults to the public ntfy.sh. Use your own instance URL if self-hosted.",
+    },
+    {
+      name: "topic",
+      label: "Topic",
+      type: "text",
+      required: true,
+      placeholder: "vehicle-alerts-abc123",
+      help: "Letters, numbers, _ and - only. Anyone with the topic name can read it on public servers — pick something unguessable.",
+    },
+    {
+      name: "authToken",
+      label: "Auth token (optional)",
+      type: "password",
+      placeholder: "tk_… (only for protected servers)",
+    },
+  ],
   configSchema: ntfyConfigSchema,
   async send(config, msg) {
     const url = `${config.server}/${encodeURIComponent(config.topic)}`;

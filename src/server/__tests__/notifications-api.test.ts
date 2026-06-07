@@ -79,12 +79,31 @@ function ntfyChannel(over: Record<string, unknown> = {}) {
 // ─── GET /providers ───────────────────────────────────────────────────────────
 
 describe("GET /notifications/providers", () => {
-  it("returns the registered provider list", async () => {
+  it("returns the registered provider list including field specs", async () => {
     const cookie = await adminCookie();
     const res = await get(app, "/notifications/providers", cookie);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual(expect.arrayContaining([{ type: "ntfy", label: "ntfy" }]));
+
+    const ntfy = body.find((p: { type: string }) => p.type === "ntfy");
+    expect(ntfy).toBeDefined();
+    expect(ntfy.label).toBe("ntfy");
+    expect(ntfy.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "topic", required: true }),
+        expect.objectContaining({ name: "authToken", type: "password" }),
+      ])
+    );
+
+    const pushover = body.find((p: { type: string }) => p.type === "pushover");
+    expect(pushover).toBeDefined();
+    expect(pushover.label).toBe("Pushover");
+    expect(pushover.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "userKey", required: true }),
+        expect.objectContaining({ name: "appToken", required: true, type: "password" }),
+      ])
+    );
   });
 
   it("requires auth", async () => {
