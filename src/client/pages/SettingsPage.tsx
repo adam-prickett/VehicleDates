@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api.ts";
 import { useAlertsEnabled } from "../hooks/useAlertsEnabled.ts";
 import { useCompactMode } from "../hooks/useCompactMode.ts";
+import { useAuth } from "../context/AuthContext.tsx";
 import {
   NotificationChannelModal,
   type ChannelFormPayload,
@@ -1017,6 +1018,9 @@ function NotificationActivitySection() {
 // --- Page ---
 
 export function SettingsPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
   return (
     <div className="space-y-5">
       <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Settings</h1>
@@ -1025,9 +1029,13 @@ export function SettingsPage() {
       <NotificationPreferencesSection />
       <NotificationChannelsSection />
       <NotificationActivitySection />
-      <DvlaKeySection />
-      <ExportSection />
-      <ImportSection />
+      {isAdmin && (
+        <>
+          <DvlaKeySection />
+          <ExportSection />
+          <ImportSection />
+        </>
+      )}
     </div>
   );
 }

@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-06-07
+
+### Added
+
+- **Pushover notification provider.** Form-encoded POST to `api.pushover.net`. Per-channel config: user key, app token, optional device-name targeting and custom sound. Pushover-style `errors[]` arrays surface verbatim in the activity log on failure.
+- **Discord notification provider.** Webhook-based, rich embed body with a priority-coded border colour (gray / blue / orange / red). Optional bot-username override. URL schema accepts `discord.com`, `discordapp.com` and their `ptb./canary.` subdomains.
+- **Compact dashboard view.** New Settings → Compact Dashboard toggle (per-device, persisted in `localStorage`, real-time cross-page sync). When on, the vehicle list renders as a single-column rounded card with row dividers instead of the responsive grid — registration plate on the left, status icon (expired / warning / ok / unknown) on the right, plus SORN or archive pills where applicable.
+
+### Changed
+
+- **Channel modal is now field-driven.** Each provider declares its UI shape (`name`, `label`, `type`, `required`, `placeholder`, `help`, `defaultValue`) alongside its Zod schema and `send` function. `GET /api/notifications/providers` returns the field specs; the channel modal renders generic inputs from them. **Adding a new provider is now one server file plus one registry line — zero client changes.** Discord landed this way as the proof.
+- **Channel-list summary line** is now auto-generated from non-secret, non-empty fields, replacing the per-type if/else block.
+- Extracted `getOverallStatus` + `isSorn` into `src/client/lib/vehicleStatus.ts` so the existing grid card and the new compact row share one source of truth.
+
+### Fixed
+
+- **Pushover silent no-ops on `info` responses.** Pushover returns HTTP 200 with `"info": "no active devices to send to"` when the user account has no registered devices — the send appeared to succeed and the message vanished. The provider now parses the response body on 200 and throws when an `info` field is present, so the user sees the warning in the Test result and in the activity log.
+- **Settings — admin-only sections no longer render for standard users.** `/api/settings/*` (DVLA key, Export, Import) has been admin-gated server-side since 0.3.1, but the matching Settings sections rendered for everyone and 403'd on every API call. Standard users now see the per-user sections (Alerts, Compact Dashboard, Notifications, Channels, Activity) only.
+
+### Tests
+
+- **236 → 249 total** (+13 Discord, +3 Pushover info-field handling; everything else covered by the existing provider/scheduler suites).
+
 ## [0.4.0] — 2026-06-07
 
 ### Added
@@ -140,6 +163,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Server-side admin password reset script
 - Dockerfile + docker-compose for self-hosting
 
+[0.5.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.4...v0.4.0
 [0.3.4]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/adam-prickett/VehicleDates/compare/v0.3.2...v0.3.3

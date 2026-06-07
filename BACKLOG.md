@@ -2,7 +2,6 @@
 
 Running list of follow-up work, known limitations, and ideas across the whole application. Each item names the area it refers to in its lead-in. Items shipped get crossed off rather than deleted.
 
-- [ ] **Settings — gate admin-only sections.** Standard users can navigate to `/settings` and the DVLA-key, Export and Import sections render but every API call 403s (those endpoints are admin-only). Conditionally render via `useAuth()` so non-admins only see Dashboard Alerts, Notifications and Notification Channels.
 - [ ] **Notifications — timezone auto-detect on first setup.** Preferences default to `Europe/London`. The client knows the browser's zone via `Intl.DateTimeFormat().resolvedOptions().timeZone` — pre-fill the picker, or seed server-side on first create from a value the client supplies.
 - [ ] **Notifications — "test before saving" path.** The Test button exists on saved channels only. Add a "Send test" button inside the Add Channel modal that hits a new `POST /api/notifications/preview-channel` taking `{ type, config }` and dispatching without persisting.
 - [ ] **Notifications — flag tests in the activity view.** `POST /channels/:id/test` calls the provider but does not write to `notification_log`. Intentional, but worth a one-line note in the Activity panel explaining "Tests don't appear here."
@@ -27,6 +26,7 @@ Running list of follow-up work, known limitations, and ideas across the whole ap
 - [x] **Notifications — click-action deep links.**
 - [x] **Notifications — log table pruning.**
 - [x] **Settings — `make` field type mismatch.**
+- [x] **Settings — gate admin-only sections from non-admins.**
 
 ---
 
